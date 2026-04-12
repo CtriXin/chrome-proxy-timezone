@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body class="dark">
+  <div class="app-container">
+    <header class="main-header">
+      <div class="brand-info">
+        <div id="statusDot" class="pulsing-dot"></div>
+        <h1 data-i18n="appName">Atlas Proxy</h1>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button id="uiLangToggle" class="icon-btn text-icon">中/En</button>
+        <button id="themeToggle" class="icon-btn">☀️</button>
+        <button id="headerSettings" class="icon-btn">⚙️</button>
+      </div>
+    </header>
+
+    <main class="content-viewport">
+      <section id="tab-home" class="view active">
+        <div class="main-hero">
+          <div class="ip-display">
+            <span class="label" data-i18n="heroLabel">ACTIVE EXIT IP</span>
+            <h2 id="hero-ip" class="mono">--</h2>
+            <p id="hero-geo" data-i18n="heroDetecting">Detecting...</p>
+          </div>
+        </div>
+
+        <div class="control-cards">
+          <div class="control-card">
+            <label data-i18n="labelMode">Mode</label>
+            <select id="proxyMode">
+              <option value="system" data-i18n="statusSystem">System</option>
+              <option value="direct" data-i18n="statusDirect">Direct</option>
+              <option value="manual" data-i18n="statusManual">Manual</option>
+              <option value="auto" data-i18n="statusAuto">Auto</option>
+            </select>
+          </div>
+          <div class="control-card" id="profileRow" style="display:none">
+            <label data-i18n="labelProfile">Node</label>
+            <select id="activeProfile"></select>
+          </div>
+          <div class="control-card">
+            <label data-i18n="labelTz">Timezone</label>
+            <select id="tzSelect">
+              <option value="" data-i18n="optDefault">Default</option>
+              <option value="ip" data-i18n="optIpLocation">Follow IP</option>
+              <optgroup label="UTC +8 (Asia)">
+                <option value="Asia/Singapore">Singapore (新加坡)</option>
+                <option value="Asia/Shanghai">Beijing / Shanghai (北京/上海)</option>
+                <option value="Asia/Hong_Kong">Hong Kong (香港)</option>
+                <option value="Asia/Taipei">Taipei (台北)</option>
+              </optgroup>
+              <optgroup label="UTC +9 (Asia)">
+                <option value="Asia/Tokyo">Tokyo / Osaka (东京/大阪)</option>
+                <option value="Asia/Seoul">Seoul (首尔)</option>
+              </optgroup>
+              <optgroup label="Americas">
+                <option value="America/New_York">New York / Toronto (UTC-5)</option>
+                <option value="America/Chicago">Chicago / Mexico City (UTC-6)</option>
+                <option value="America/Los_Angeles">LA / Vancouver (UTC-8)</option>
+                <option value="America/Phoenix">Phoenix / Arizona (UTC-7)</option>
+              </optgroup>
+              <optgroup label="Europe">
+                <option value="Europe/London">London / Dublin (UTC+0)</option>
+                <option value="Europe/Paris">Berlin / Paris / Rome (UTC+1)</option>
+                <option value="Europe/Moscow">Moscow / Istanbul (UTC+3)</option>
+              </optgroup>
+              <option value="UTC">UTC (Universal)</option>
+            </select>
+          </div>
+          <div class="control-card">
+            <label data-i18n="labelLang">Lang</label>
+            <select id="langSelect">
+              <option value="" data-i18n="optDefault">Default</option>
+              <option value="zh-CN">简体中文 (zh-CN)</option>
+              <option value="zh-TW">繁體中文 (zh-TW)</option>
+              <option value="en-US">English (en-US)</option>
+              <option value="en-GB">English (en-GB)</option>
+              <option value="ja-JP">日本語 (ja-JP)</option>
+              <option value="ko-KR">한국어 (ko-KR)</option>
+              <option value="fr-FR">Français (fr-FR)</option>
+              <option value="de-DE">Deutsch (de-DE)</option>
+              <option value="ru-RU">Русский (ru-RU)</option>
+            </select>
+          </div>
+        </div>
+        <button id="quickScanBtn" class="primary-btn" data-i18n="btnScan">Deep Diagnostics</button>
+      </section>
+
+      <section id="tab-network" class="view">
+        <div class="scan-scroll-area">
+          <div class="card-group">
+            <h3 class="group-title" data-i18n="ipTrace">IP Trace</h3>
+            <div class="data-row"><span>Cloudflare</span><b id="trace-cf" class="mono text-highlight">--</b></div>
+            <div class="data-row"><span>Claude</span><b id="trace-claude" class="mono text-highlight">--</b></div>
+          </div>
+          <div class="card-group">
+            <h3 class="group-title" data-i18n="connectivity">Connectivity</h3>
+            <div id="ping-list" class="ping-list"></div>
+          </div>
+          <div class="card-group">
+            <h3 class="group-title" data-i18n="chinaExit">China Exit</h3>
+            <div class="data-row"><span data-i18n="status">Status</span><b id="cn-status">--</b></div>
+            <div id="cn-detail" class="mini-muted"></div>
+            <button id="checkChinaBtn" class="ghost-btn" data-i18n="detectChinaIp">Check China IP</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-claude" class="view">
+        <div class="scan-scroll-area">
+          <div class="card-group text-center">
+            <h3 class="group-title" data-i18n="trustScore">Trust Score</h3>
+            <div class="score-ring-large">
+              <svg viewBox="0 0 36 36"><path class="circle-bg" d="M18 2 a 16 16 0 0 1 0 32 a 16 16 0 0 1 0 -32"/><path id="claudeScoreCircle" class="circle" stroke-dasharray="0, 100" d="M18 2 a 16 16 0 0 1 0 32 a 16 16 0 0 1 0 -32"/></svg>
+              <div class="score-text"><span id="claudeScoreValue">--</span><small>/100</small></div>
+            </div>
+            <div id="claudeScoreLabel" class="score-label">--</div>
+            <div id="claudeIpType" class="badge">--</div>
+          </div>
+          <div class="card-group">
+            <h3 class="group-title" data-i18n="ipAttr">IP Attributes</h3>
+            <div class="data-row"><span data-i18n="region">Region</span><b id="attr-country">--</b></div>
+            <div class="data-row"><span data-i18n="city">City</span><b id="attr-city">--</b></div>
+            <div class="data-row"><span>ASN</span><b id="attr-asn" class="mono">--</b></div>
+            <div class="data-row"><span data-i18n="isp">ISP</span><b id="attr-isp">--</b></div>
+            <div class="data-row"><span data-i18n="reverseDns">Reverse DNS</span><b id="attr-reverseDns">--</b></div>
+            <div class="data-row"><span data-i18n="hostPtr">Host (PTR)</span><b id="attr-hostPtr">--</b></div>
+            <div class="data-row"><span data-i18n="fakeIp">Fake IP</span><b id="attr-fakeIp">--</b></div>
+            <div class="data-row"><span data-i18n="chinaDns">China DNS</span><b id="attr-chinaDns">--</b></div>
+          </div>
+          <div class="card-group">
+            <h3 class="group-title" data-i18n="securityDet">Security Detection</h3>
+            <div class="safety-grid" id="safety-badges"></div>
+          </div>
+          <div class="card-group">
+            <h3 class="group-title" data-i18n="availability">Availability</h3>
+            <div class="data-row"><span data-i18n="claudeAi">Claude AI</span><b id="claudeAiStatus">--</b></div>
+            <div class="data-row"><span data-i18n="claudeCode">Claude Code</span><b id="claudeCodeStatus">--</b></div>
+            <div class="data-row"><span>Latency</span><b id="claudeLatencyText" class="mono">--</b></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-auditor" class="view">
+        <div class="scan-scroll-area">
+          <button id="runAuditBtn" class="primary-btn" data-i18n="runAllChecks">Run All Checks</button>
+          <div class="card-group">
+            <h3 class="group-title" data-i18n="dnsLeak">DNS Leak</h3>
+            <div class="data-row"><span>IP</span><b id="dns-ip" class="mono">--</b></div>
+            <div class="data-row"><span data-i18n="status">Status</span><b id="dns-status">--</b></div>
+          </div>
+          <div class="card-group">
+            <h3 class="group-title" data-i18n="webrtcPrivacy">WebRTC Privacy</h3>
+            <div class="data-row"><span data-i18n="status">Status</span><b id="webrtc-res">--</b></div>
+          </div>
+          <div class="card-group">
+            <h3 class="group-title" data-i18n="deviceInfo">Device Info</h3>
+            <div class="data-row"><span>Timezone</span><b id="dev-tz">--</b></div>
+            <div class="data-row"><span>Language</span><b id="dev-lang">--</b></div>
+            <div class="data-row"><span>WebGL Fingerprint</span><b id="dev-webgl" class="mono">--</b></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-tab="home"><span class="icon">🏠</span><span data-i18n="tabQuick">Home</span></button>
+      <button class="nav-item" data-tab="network"><span class="icon">🌐</span><span data-i18n="tabNetwork">Network</span></button>
+      <button class="nav-item" data-tab="claude"><span class="icon">✦</span><span data-i18n="tabClaude">Claude</span></button>
+      <button class="nav-item" data-tab="auditor"><span class="icon">🛡️</span><span data-i18n="tabScan">Auditor</span></button>
+    </nav>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>
