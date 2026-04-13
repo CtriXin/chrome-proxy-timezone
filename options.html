@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Atlas Proxy Settings</title>
+  <title>Atlas 代理设置</title>
   <link rel="stylesheet" href="options.css">
 </head>
 <body class="dark">
@@ -10,14 +10,14 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <span class="logo">◈ Atlas Proxy</span>
-        <span class="sub">Settings</span>
+        <span class="sub">设置</span>
       </div>
       <nav class="sidebar-nav">
         <div class="nav-group-title" data-i18n="tabQuick">PROXIES</div>
         <div id="profileList" class="profile-list"></div>
         <button id="newProfileBtn" class="btn-new-node" data-i18n="btnNewProfile">+ Add Profile</button>
         <div class="nav-divider"></div>
-        <div class="nav-group-title">SYSTEM</div>
+        <div id="systemGroupTitle" class="nav-group-title">系统</div>
         <button class="nav-menu-item active" data-section="section-node">
           <span class="icon">🔒</span> <span data-i18n="labelProfileInfo">Node Detail</span>
         </button>
@@ -25,10 +25,19 @@
           <span class="icon">🔀</span> <span data-i18n="statusAuto">Routing Rules</span>
         </button>
         <button class="nav-menu-item" data-section="section-general">
-          <span class="icon">🌍</span> <span data-i18n="labelGlobalSettings">Preferences</span>
+          <span class="icon">🌍</span> <span data-i18n="labelGlobalSettings">通用设置</span>
+        </button>
+        <button class="nav-menu-item" data-section="section-mini">
+          <span class="icon">🧩</span> <span>Atlas Mini</span>
         </button>
         <button class="nav-menu-item" data-section="section-backup">
-          <span class="icon">💾</span> <span data-i18n="btnImport">Backup & Sync</span>
+          <span class="icon">💾</span> <span id="backupMenuText">导入 / 导出</span>
+        </button>
+        <button class="nav-menu-item" data-section="section-diagnostics">
+          <span class="icon">📊</span> <span id="diagMenuText">诊断中心</span>
+        </button>
+        <button class="nav-menu-item" data-section="section-routinglab">
+          <span class="icon">🧭</span> <span id="routingMenuText">分流实验室</span>
         </button>
       </nav>
     </aside>
@@ -72,7 +81,7 @@
               <div class="field"><label data-i18n="labelPass">Pass</label><input type="password" id="pPass"></div>
             </div>
             <div class="btn-row">
-              <button id="testNodeBtn" class="btn-test">⚡ Test Connection</button>
+              <button id="testNodeBtn" class="btn-test">⚡ 测试连接</button>
               <button id="pasteBtn" class="btn-ghost" data-i18n="btnPaste">Paste</button>
               <button id="updateProfileBtn" class="btn-ghost" data-i18n="btnUpdate">Update</button>
               <button id="delProfileBtn" class="btn-ghost danger" data-i18n="btnDelete">Delete</button>
@@ -84,9 +93,41 @@
         <section id="section-rules" class="config-section">
           <h2 data-i18n="statusAuto">Auto Routing Rules</h2>
           <div class="card">
-            <div id="ruleList" class="rule-list"></div>
-            <div class="grid-2" style="margin-top:16px"><input type="text" id="rulePattern" placeholder="*.google.com"><select id="ruleProfile"></select></div>
-            <button id="addRuleBtn" class="btn-ghost" data-i18n="btnAddRule" style="margin-top:12px">+ Add Rule</button>
+            <div class="rule-toolbar">
+              <div class="rule-mode-tabs">
+                <button id="ruleVisualModeBtn" class="btn-ghost active" type="button">逐条编辑</button>
+                <button id="ruleSourceModeBtn" class="btn-ghost" type="button">源码模式</button>
+              </div>
+              <div class="rule-actions">
+                <button id="loadClaudePresetBtn" class="btn-ghost" type="button">导入 Claude 预设</button>
+                <button id="copyRuleSourceBtn" class="btn-ghost" type="button">复制源码</button>
+              </div>
+            </div>
+
+            <div id="ruleVisualPanel">
+              <div id="ruleList" class="rule-list"></div>
+              <div class="rule-add-grid">
+                <select id="ruleType">
+                  <option value="suffix">域名后缀</option>
+                  <option value="domain">精确域名</option>
+                  <option value="keyword">关键字</option>
+                  <option value="wildcard">通配符</option>
+                </select>
+                <input type="text" id="rulePattern" placeholder="anthropic.com / *.google.com / datadog">
+                <select id="ruleProfile"></select>
+              </div>
+              <button id="addRuleBtn" class="btn-ghost" data-i18n="btnAddRule" style="margin-top:12px">+ Add Rule</button>
+            </div>
+
+            <div id="ruleSourcePanel" class="rule-source-panel" style="display:none">
+              <textarea id="ruleSource" class="rule-source-textarea" spellcheck="false"></textarea>
+              <p class="mini-muted" style="margin-top:10px">
+                支持两种格式：1) SwitchyOmega 风格：<code>*.anthropic.com +节点名</code>；2) 显式格式：<code>DOMAIN-SUFFIX,anthropic.com +节点名</code> / <code>DOMAIN,api.anthropic.com +节点名</code> / <code>DOMAIN-KEYWORD,datadog +节点名</code>。
+              </p>
+              <div class="rule-actions" style="margin-top:12px">
+                <button id="applyRuleSourceBtn" class="btn-ghost" type="button">从源码导入</button>
+              </div>
+            </div>
           </div>
           <div class="card" style="margin-top:20px">
             <div class="field"><label data-i18n="labelBypass">Bypass List</label><input type="text" id="proxyBypass"></div>
@@ -95,9 +136,8 @@
 
         <!-- Section: General -->
         <section id="section-general" class="config-section">
-          <h2 data-i18n="labelGlobalSettings">Global Preferences</h2>
+          <h2 data-i18n="labelGlobalSettings">通用设置</h2>
           <div class="card">
-            <div class="field"><label>API Worker URL</label><input type="text" id="apiBase"></div>
             <div class="field">
               <label data-i18n="labelTz">Timezone</label>
               <select id="timezone">
@@ -131,6 +171,7 @@
               <label data-i18n="labelLang">Language</label>
               <select id="language">
                 <option value="" data-i18n="optDefault">Default</option>
+                <option value="ip" data-i18n="optIpLocation">Follow IP</option>
                 <option value="zh-CN">简体中文 (zh-CN)</option>
                 <option value="zh-TW">繁體中文 (zh-TW)</option>
                 <option value="en-US">English (en-US)</option>
@@ -147,20 +188,248 @@
           </div>
         </section>
 
+        <section id="section-mini" class="config-section">
+          <h2>Atlas Mini</h2>
+          <div class="card">
+            <div class="mini-section-hero">
+              <div>
+                <div class="mini-section-title">Atlas Mini 订阅与节点源</div>
+                <div class="mini-muted">这里就是 popup 里“未配置订阅”对应的网页端配置入口。</div>
+              </div>
+              <div class="mini-section-badge">popup 配置入口</div>
+            </div>
+            <div class="field">
+              <label>当前订阅</label>
+              <select id="miniSubscriptionSelect"></select>
+            </div>
+            <div class="grid-2">
+              <div class="field"><label>订阅名称</label><input type="text" id="miniSubName" placeholder="例如：CF 官方优选"></div>
+              <div class="field"><label>User-Agent</label><input type="text" id="miniSubUa" placeholder="可选"></div>
+            </div>
+            <div class="field"><label>订阅 URL</label><input type="text" id="miniSubUrlInput" placeholder="https://..."></div>
+            <div class="btn-row mini-sub-actions">
+              <button id="miniSubNewBtn" class="btn-ghost" type="button">新建空白</button>
+              <button id="miniSubSaveBtn" class="btn-ghost" type="button">保存订阅</button>
+              <button id="miniSubDeleteBtn" class="btn-ghost danger" type="button">删除订阅</button>
+              <button id="miniSubSyncBtn" class="btn-primary" type="button">同步到 Atlas Mini</button>
+            </div>
+            <div id="miniSubStatus" class="mini-muted mini-sub-status">--</div>
+          </div>
+        </section>
+
         <!-- Section: Backup -->
         <section id="section-backup" class="config-section">
-          <h2>Backup & Restore</h2>
+          <h2 id="backupTitle">导入 / 导出</h2>
           <div class="card">
             <div class="btn-row">
-              <button id="exportBtn" class="btn-ghost" data-i18n="btnExport">Export JSON</button>
-              <button id="importBtn" class="btn-ghost" data-i18n="btnImport">Import JSON</button>
+              <button id="exportBtn" class="btn-ghost" data-i18n="btnExport">导出 JSON</button>
+              <button id="importBtn" class="btn-ghost" data-i18n="btnImport">导入 JSON</button>
               <input type="file" id="importFile" style="display:none">
             </div>
           </div>
         </section>
+
+        <!-- Section: Diagnostics -->
+        <section id="section-diagnostics" class="config-section diag-section">
+          <div class="diag-header">
+            <div>
+              <h2 id="diagTitle">本地诊断中心</h2>
+              <p id="diagSubtitle" class="diag-subtitle">直接使用扩展后台与页面探针数据，不依赖外部展示页。</p>
+            </div>
+            <div class="diag-actions">
+              <button id="runDiagLightBtn" class="btn-ghost">刷新快照</button>
+              <button id="runDiagFullBtn" class="btn-primary">完整扫描</button>
+            </div>
+          </div>
+
+          <div id="diagOverviewDeck" class="diag-overview-deck"></div>
+          <div id="diagFocusCards" class="diag-focus-grid"></div>
+
+          <div class="diag-grid diag-grid-2">
+            <div class="card">
+              <h3 id="diagOverviewTitle">Exit Overview</h3>
+              <div id="diagOverviewRows" class="diag-rows"></div>
+            </div>
+            <div class="card">
+              <h3 id="diagClaudeTitle">Claude Reachability</h3>
+              <div id="diagClaudeHint" class="mini-muted diag-note">--</div>
+              <div class="diag-score-panel">
+                <div class="diag-score-head">
+                  <div>
+                    <div class="diag-score-caption">Trust Score</div>
+                    <div class="diag-score-value-line">
+                      <span id="diagTrustScoreValue" class="diag-score-value">--</span>
+                      <span class="diag-score-total">/100</span>
+                    </div>
+                  </div>
+                  <div id="diagTrustScoreBadge" class="diag-score-badge neutral">--</div>
+                </div>
+                <div id="diagTrustTypeTags" class="diag-score-tags"></div>
+                <div class="diag-score-bar">
+                  <div id="diagTrustScoreBar" class="diag-score-fill neutral"></div>
+                </div>
+                <div id="diagTrustScoreLabel" class="diag-score-label">--</div>
+              </div>
+              <div id="diagClaudeRows" class="diag-rows"></div>
+            </div>
+          </div>
+
+          <div class="diag-grid diag-grid-2">
+            <div class="card">
+              <h3 id="diagIpDetailTitle">IP Detail</h3>
+              <div id="diagIpDetailRows" class="diag-rows"></div>
+            </div>
+            <div class="card">
+              <h3 id="diagSecurityTitle">Security Snapshot</h3>
+              <div id="diagSecurityRows" class="diag-rows"></div>
+              <div id="diagSignalPanels" class="diag-signal-grid"></div>
+              <div id="diagSecurityBadges" class="diag-badge-cloud"></div>
+            </div>
+          </div>
+
+          <div class="diag-grid">
+            <div class="card">
+              <h3 id="diagCrossTitle">Cross-source Check</h3>
+              <div id="diagCrossSummary" class="diag-cross-summary">--</div>
+              <div id="diagCrossRows" class="diag-rows"></div>
+              <div id="diagCrossSources" class="diag-cross-grid"></div>
+            </div>
+          </div>
+
+          <div class="diag-grid diag-grid-2">
+            <div class="card">
+              <h3 id="diagNetworkTitle">Network Probe</h3>
+              <div id="diagNetworkRows" class="diag-rows"></div>
+            </div>
+            <div class="card">
+              <h3 id="diagPrivacyTitle">Privacy & Leak</h3>
+              <div id="diagPrivacyRows" class="diag-rows"></div>
+            </div>
+          </div>
+
+          <div class="diag-grid diag-grid-2">
+            <div class="card">
+              <h3 id="diagTargetPageTitle">Target Page Environment</h3>
+              <div class="diag-target-grid">
+                <div class="field diag-target-field">
+                  <label id="diagTargetLabel">Detection Target Page</label>
+                  <select id="diagTabSelect"></select>
+                </div>
+                <button id="diagRefreshTabsBtn" class="btn-ghost">Refresh Tabs</button>
+              </div>
+              <div id="diagTargetHint" class="mini-muted diag-note">--</div>
+              <div id="diagTargetPageRows" class="diag-rows"></div>
+            </div>
+            <div class="card">
+              <h3 id="diagDeviceTitle">Local Device Environment</h3>
+              <div id="diagDeviceRows" class="diag-rows"></div>
+            </div>
+          </div>
+
+          <div class="diag-grid">
+            <div class="card">
+              <h3 id="diagRecommendTitle">Conclusion & Advice</h3>
+              <div id="diagRecommendRows" class="diag-recommend"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="section-routinglab" class="config-section routing-section">
+          <div class="diag-header">
+            <div>
+              <h2 id="routingTitle">Routing Lab</h2>
+              <p id="routingSubtitle" class="diag-subtitle">Connectivity cards plus a routing matrix with confidence labels.</p>
+            </div>
+            <div class="diag-actions">
+              <button id="runRoutingLabBtn" class="btn-primary">Run Routing Lab</button>
+            </div>
+          </div>
+
+          <div class="card routing-toolbar">
+            <div class="routing-toolbar-left">
+              <div class="routing-toolbar-label" id="routingCategoryLabel">分类筛选</div>
+              <div id="routingCategoryFilters" class="routing-filter-chips"></div>
+            </div>
+            <label class="routing-toggle">
+              <input id="routingOnlyAbnormal" type="checkbox">
+              <span id="routingOnlyAbnormalLabel">只看异常分流</span>
+            </label>
+          </div>
+
+          <div class="card">
+            <h3 id="routingCardsTitle">Network Connectivity</h3>
+            <div id="routingCards" class="routing-cards"></div>
+          </div>
+
+          <div class="card">
+            <h3 id="routingTableTitle">Site Split Matrix</h3>
+            <p id="routingTableHint" class="mini-muted diag-note">Verified means the target exposes a trace/echo style signal. Inferred means the row is based on rule matching plus observed reachability.</p>
+            <div class="routing-table-wrap">
+              <table class="routing-table">
+                <thead>
+                  <tr>
+                    <th id="routingColSite">Site</th>
+                    <th id="routingColCategory">Category</th>
+                    <th id="routingColStatus">Status</th>
+                    <th id="routingColLatency">Latency</th>
+                    <th id="routingColExit">Observed Exit</th>
+                    <th id="routingColGeo">Geo</th>
+                    <th id="routingColRoute">Route Basis</th>
+                    <th id="routingColNode">Rule Node</th>
+                    <th id="routingColConfidence">Confidence</th>
+                  </tr>
+                </thead>
+                <tbody id="routingTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
       </div>
     </main>
   </div>
+
+  <div id="diagIpModal" class="diag-modal" aria-hidden="true">
+    <div class="diag-modal-backdrop" data-close-ip-modal="true"></div>
+    <div class="diag-modal-panel" role="dialog" aria-modal="true" aria-labelledby="diagIpModalTitle">
+      <button id="diagIpModalClose" class="diag-modal-close" type="button" aria-label="Close">×</button>
+      <div class="diag-modal-header">
+        <div>
+          <div class="diag-hero-label">IP DETAIL</div>
+          <h3 id="diagIpModalTitle" class="diag-modal-title">Exit IP Detail</h3>
+          <div id="diagIpModalSubtitle" class="mini-muted">--</div>
+        </div>
+        <div id="diagIpModalRiskBadge" class="diag-score-badge neutral">--</div>
+      </div>
+      <div class="diag-modal-map-wrap">
+        <img id="diagIpModalMap" class="diag-modal-map" alt="IP location map">
+        <div id="diagIpModalMapFallback" class="diag-map-fallback">Map unavailable</div>
+        <div id="diagIpModalMapMeta" class="diag-map-meta">--</div>
+      </div>
+      <div class="diag-grid diag-grid-2 diag-modal-grid">
+        <div class="card diag-modal-card">
+          <h3 id="diagModalBasicTitle">Basic Info</h3>
+          <div id="diagIpModalBasicRows" class="diag-rows"></div>
+        </div>
+        <div class="card diag-modal-card">
+          <h3 id="diagModalRiskTitle">Risk Rating</h3>
+          <div id="diagIpModalRiskPanel" class="diag-modal-risk"></div>
+        </div>
+      </div>
+      <div class="card diag-modal-card">
+        <h3 id="diagModalSignalsTitle">Security Signals</h3>
+        <div id="diagIpModalSignalPanels" class="diag-signal-grid"></div>
+        <div id="diagIpModalBadges" class="diag-badge-cloud"></div>
+      </div>
+      <div class="card diag-modal-card">
+        <h3 id="diagModalCrossTitle">Cross-source Check</h3>
+        <div id="diagIpModalCrossSummary" class="diag-cross-summary">--</div>
+        <div id="diagIpModalCrossRows" class="diag-rows"></div>
+        <div id="diagIpModalCrossSources" class="diag-cross-grid"></div>
+      </div>
+    </div>
+  </div>
   <script src="options.js"></script>
+  <script src="options-diagnostics.js"></script>
 </body>
 </html>

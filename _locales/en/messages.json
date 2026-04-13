@@ -1,87 +1,320 @@
 {
-  "appName": { "message": "Atlas Proxy" },
-  "appDesc": { "message": "Privacy-focused network auditor and IP intelligence tool." },
-  "statusSystem": { "message": "System" },
-  "statusDirect": { "message": "Direct" },
-  "statusManual": { "message": "Manual" },
-  "statusAuto": { "message": "Auto" },
-  "tabQuick": { "message": "Home" },
-  "tabNetwork": { "message": "Network" },
-  "tabClaude": { "message": "Claude" },
-  "tabScan": { "message": "Auditor" },
-  "labelMode": { "message": "Global Mode" },
-  "labelProfile": { "message": "Current Node" },
-  "labelTz": { "message": "Geo Timezone" },
-  "labelLang": { "message": "Browser Lang" },
-  "btnScan": { "message": "Deep Diagnostics" },
-  "btnOptions": { "message": "Settings" },
-  "heroLabel": { "message": "ACTIVE EXIT IP" },
-  "heroDetecting": { "message": "Detecting..." },
-  "optDefault": { "message": "Default (No Change)" },
-  "optIpLocation": { "message": "Follow IP Location" },
-  "scanning": { "message": "Scanning..." },
-  "protected": { "message": "Protected" },
-  "leaked": { "message": "Leaked" },
-  "residential": { "message": "Residential IP" },
-  "proxyVpn": { "message": "Proxy/VPN" },
-  "ipTrace": { "message": "IP Trace" },
-  "connectivity": { "message": "Connectivity" },
-  "chinaExit": { "message": "China Exit" },
-  "trustScore": { "message": "Trust Score" },
-  "ipAttr": { "message": "IP Attributes" },
-  "securityDet": { "message": "Security Detection" },
-  "availability": { "message": "Availability" },
-  "dnsLeak": { "message": "DNS Leak" },
-  "webrtcPrivacy": { "message": "WebRTC Privacy" },
-  "deviceInfo": { "message": "Device Info" },
-  "region": { "message": "Region" },
-  "city": { "message": "City" },
-  "isp": { "message": "ISP" },
-  "vpn": { "message": "VPN" },
-  "proxy": { "message": "Proxy" },
-  "tor": { "message": "Tor" },
-  "crawler": { "message": "Bot" },
-  "abuser": { "message": "Abuser" },
-  "datacenter": { "message": "Data Center" },
-  "relay": { "message": "Relay" },
-  "anonymous": { "message": "Anonymous" },
-  "attacker": { "message": "Known Attacker" },
-  "threats": { "message": "Threats" },
-  "bogon": { "message": "Bogon" },
-  "spam": { "message": "Spam" },
-  "batch": { "message": "Batch" },
-  "scanner": { "message": "Scanner" },
-  "botnet": { "message": "Botnet" },
-  "scoreTrustworthy": { "message": "Extremely Trustworthy" },
-  "scoreGood": { "message": "Trustworthy" },
-  "scoreFair": { "message": "Questionable" },
-  "scorePoor": { "message": "Untrustworthy" },
-  "scoreBad": { "message": "Dangerous" },
-  "reverseDns": { "message": "Reverse DNS" },
-  "hostPtr": { "message": "Host Detection" },
-  "fakeIp": { "message": "Fake IP" },
-  "chinaDns": { "message": "China DNS" },
-  "claudeAi": { "message": "Claude AI" },
-  "claudeCode": { "message": "Claude Code" },
-  "status": { "message": "Status" },
-  "latency": { "message": "Latency" },
-  "detectChinaIp": { "message": "Detect China IP" },
-  "runAllChecks": { "message": "Run All Checks" },
-  "btnSaveApply": { "message": "Apply Changes" },
-  "labelProfileInfo": { "message": "Node Detail" },
-  "labelAlias": { "message": "Alias" },
-  "labelProtocol": { "message": "Protocol" },
-  "labelHost": { "message": "IP / Domain" },
-  "labelPort": { "message": "Port" },
-  "labelUser": { "message": "Username" },
-  "labelPass": { "message": "Password" },
-  "btnPaste": { "message": "📋 Paste URL" },
-  "btnUpdate": { "message": "Update Node" },
-  "btnDelete": { "message": "Delete Node" },
-  "btnNewProfile": { "message": "+ Add Profile" },
-  "btnAddRule": { "message": "+ Add Rule" },
-  "labelBypass": { "message": "Bypass List" },
-  "labelGlobalSettings": { "message": "Global Settings" },
-  "btnExport": { "message": "Export JSON" },
-  "btnImport": { "message": "Import JSON" }
+  "appName": {
+    "message": "Atlas Proxy"
+  },
+  "appDesc": {
+    "message": "Privacy-focused network auditor and IP intelligence tool."
+  },
+  "statusSystem": {
+    "message": "System"
+  },
+  "statusDirect": {
+    "message": "Direct"
+  },
+  "statusManual": {
+    "message": "Manual"
+  },
+  "statusAuto": {
+    "message": "Auto"
+  },
+  "tabQuick": {
+    "message": "Home"
+  },
+  "tabNetwork": {
+    "message": "Network"
+  },
+  "tabClaude": {
+    "message": "Claude"
+  },
+  "tabScan": {
+    "message": "Auditor"
+  },
+  "labelMode": {
+    "message": "Global Mode"
+  },
+  "labelProfile": {
+    "message": "Current Node"
+  },
+  "labelTz": {
+    "message": "Geo Timezone"
+  },
+  "labelLang": {
+    "message": "Browser Lang"
+  },
+  "btnScan": {
+    "message": "Deep Diagnostics"
+  },
+  "btnOptions": {
+    "message": "Settings"
+  },
+  "heroLabel": {
+    "message": "ACTIVE EXIT IP"
+  },
+  "heroDetecting": {
+    "message": "Detecting..."
+  },
+  "optDefault": {
+    "message": "Default (No Change)"
+  },
+  "optIpLocation": {
+    "message": "Follow IP Location"
+  },
+  "scanning": {
+    "message": "Scanning..."
+  },
+  "protected": {
+    "message": "Protected"
+  },
+  "leaked": {
+    "message": "Leaked"
+  },
+  "residential": {
+    "message": "Residential IP"
+  },
+  "proxyVpn": {
+    "message": "Proxy/VPN"
+  },
+  "ipTrace": {
+    "message": "IP Trace"
+  },
+  "connectivity": {
+    "message": "Connectivity"
+  },
+  "chinaExit": {
+    "message": "China Exit"
+  },
+  "trustScore": {
+    "message": "Trust Score"
+  },
+  "ipAttr": {
+    "message": "IP Attributes"
+  },
+  "securityDet": {
+    "message": "Security Detection"
+  },
+  "availability": {
+    "message": "Availability"
+  },
+  "dnsLeak": {
+    "message": "DNS Leak"
+  },
+  "webrtcPrivacy": {
+    "message": "WebRTC Privacy"
+  },
+  "deviceInfo": {
+    "message": "Device Info"
+  },
+  "region": {
+    "message": "Region"
+  },
+  "city": {
+    "message": "City"
+  },
+  "isp": {
+    "message": "ISP"
+  },
+  "vpn": {
+    "message": "VPN"
+  },
+  "proxy": {
+    "message": "Proxy"
+  },
+  "tor": {
+    "message": "Tor"
+  },
+  "crawler": {
+    "message": "Bot"
+  },
+  "abuser": {
+    "message": "Abuser"
+  },
+  "datacenter": {
+    "message": "Data Center"
+  },
+  "relay": {
+    "message": "Relay"
+  },
+  "anonymous": {
+    "message": "Anonymous"
+  },
+  "attacker": {
+    "message": "Known Attacker"
+  },
+  "threats": {
+    "message": "Threats"
+  },
+  "bogon": {
+    "message": "Bogon"
+  },
+  "spam": {
+    "message": "Spam"
+  },
+  "batch": {
+    "message": "Batch"
+  },
+  "scanner": {
+    "message": "Scanner"
+  },
+  "botnet": {
+    "message": "Botnet"
+  },
+  "scoreTrustworthy": {
+    "message": "Extremely Trustworthy"
+  },
+  "scoreGood": {
+    "message": "Trustworthy"
+  },
+  "scoreFair": {
+    "message": "Questionable"
+  },
+  "scorePoor": {
+    "message": "Untrustworthy"
+  },
+  "scoreBad": {
+    "message": "Dangerous"
+  },
+  "reverseDns": {
+    "message": "Reverse DNS"
+  },
+  "hostPtr": {
+    "message": "Host Detection"
+  },
+  "fakeIp": {
+    "message": "Fake IP"
+  },
+  "chinaDns": {
+    "message": "China DNS"
+  },
+  "claudeAi": {
+    "message": "Claude AI"
+  },
+  "claudeCode": {
+    "message": "Claude Code"
+  },
+  "status": {
+    "message": "Status"
+  },
+  "latency": {
+    "message": "Latency"
+  },
+  "detectChinaIp": {
+    "message": "Detect China IP"
+  },
+  "runTrace": {
+    "message": "Run Trace"
+  },
+  "runConnectivity": {
+    "message": "Run Connectivity"
+  },
+  "runAllChecks": {
+    "message": "Run All Checks"
+  },
+  "reachable": {
+    "message": "Reachable"
+  },
+  "probeFailed": {
+    "message": "Probe Failed"
+  },
+  "unsupported": {
+    "message": "Unsupported"
+  },
+  "reportTitle": {
+    "message": "Deep Report"
+  },
+  "reportSubtitle": {
+    "message": "Full diagnostics for exit IP, Claude reachability, DNS, WebRTC and browser environment."
+  },
+  "refreshLight": {
+    "message": "Refresh Snapshot"
+  },
+  "refreshFull": {
+    "message": "Run Full Scan"
+  },
+  "overview": {
+    "message": "Overview"
+  },
+  "activeTabLabel": {
+    "message": "Active Tab"
+  },
+  "snapshotAge": {
+    "message": "Snapshot Age"
+  },
+  "exitState": {
+    "message": "Exit State"
+  },
+  "exitStable": {
+    "message": "Stable"
+  },
+  "exitChanged": {
+    "message": "Changed"
+  },
+  "openOptions": {
+    "message": "Open Settings"
+  },
+  "justNow": {
+    "message": "Just now"
+  },
+  "secondsAgo": {
+    "message": "s ago"
+  },
+  "minutesAgo": {
+    "message": "m ago"
+  },
+  "btnSaveApply": {
+    "message": "Apply Changes"
+  },
+  "labelProfileInfo": {
+    "message": "Node Detail"
+  },
+  "labelAlias": {
+    "message": "Alias"
+  },
+  "labelProtocol": {
+    "message": "Protocol"
+  },
+  "labelHost": {
+    "message": "IP / Domain"
+  },
+  "labelPort": {
+    "message": "Port"
+  },
+  "labelUser": {
+    "message": "Username"
+  },
+  "labelPass": {
+    "message": "Password"
+  },
+  "btnPaste": {
+    "message": "📋 Paste URL"
+  },
+  "btnUpdate": {
+    "message": "Update Node"
+  },
+  "btnDelete": {
+    "message": "Delete Node"
+  },
+  "btnNewProfile": {
+    "message": "+ Add Profile"
+  },
+  "btnAddRule": {
+    "message": "+ Add Rule"
+  },
+  "labelBypass": {
+    "message": "Bypass List"
+  },
+  "labelGlobalSettings": {
+    "message": "Global Settings"
+  },
+  "btnExport": {
+    "message": "Export JSON"
+  },
+  "btnImport": {
+    "message": "Import JSON"
+  },
+  "detected": {
+    "message": "Detected"
+  },
+  "notDetected": {
+    "message": "Not Detected"
+  }
 }

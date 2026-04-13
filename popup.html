@@ -14,6 +14,14 @@
       <div style="display:flex;gap:6px">
         <button id="uiLangToggle" class="icon-btn text-icon">中/En</button>
         <button id="themeToggle" class="icon-btn">☀️</button>
+        <button id="headerReport" class="icon-btn report-btn" title="Dashboard" aria-label="Dashboard">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3.5" y="4" width="7" height="7" rx="1.8"></rect>
+            <rect x="13.5" y="4" width="7" height="4" rx="1.6"></rect>
+            <rect x="13.5" y="10" width="7" height="10" rx="1.8"></rect>
+            <path d="M5.5 16.5h4.5M5.5 13.5h2.8M5.5 19.5h3.6"></path>
+          </svg>
+        </button>
         <button id="headerSettings" class="icon-btn">⚙️</button>
       </div>
     </header>
@@ -22,9 +30,10 @@
       <section id="tab-home" class="view active">
         <div class="main-hero">
           <div class="ip-display">
-            <span class="label" data-i18n="heroLabel">ACTIVE EXIT IP</span>
+            <span id="heroSummaryLabel" class="label">当前出口 IP</span>
             <h2 id="hero-ip" class="mono">--</h2>
             <p id="hero-geo" data-i18n="heroDetecting">Detecting...</p>
+            <div id="heroRouteGrid" class="hero-route-grid"></div>
           </div>
         </div>
 
@@ -37,6 +46,33 @@
               <option value="manual" data-i18n="statusManual">Manual</option>
               <option value="auto" data-i18n="statusAuto">Auto</option>
             </select>
+          </div>
+          <div class="mini-proxy-card" id="miniProxyRow" style="display:none">
+            <div class="mini-proxy-head">
+              <div>
+                <div class="mini-proxy-title">Atlas Mini</div>
+                <div id="miniStatusText" class="mini-proxy-status">Checking...</div>
+              </div>
+              <button id="miniRefreshStatus" class="icon-btn mini-icon-btn" title="刷新状态">↻</button>
+            </div>
+            <div class="mini-proxy-grid">
+              <div class="mini-proxy-field">
+                <label>订阅</label>
+                <select id="miniSubSelect"></select>
+              </div>
+              <button id="miniSubBtn" class="ghost-btn mini-action-btn">刷新订阅</button>
+            </div>
+            <div id="miniNodeBox" class="mini-node-box" style="display:none">
+              <div class="mini-proxy-grid">
+                <div class="mini-proxy-field">
+                  <label>节点</label>
+                  <select id="miniNodeSelect"></select>
+                </div>
+                <button id="miniSpeedAllBtn" class="ghost-btn mini-action-btn">全部测速</button>
+              </div>
+              <button id="miniAutoPickBtn" class="ghost-btn">自动优选最低延迟</button>
+              <div id="miniNodeMeta" class="mini-muted">--</div>
+            </div>
           </div>
           <div class="control-card" id="profileRow" style="display:none">
             <label data-i18n="labelProfile">Node</label>
@@ -96,10 +132,12 @@
             <h3 class="group-title" data-i18n="ipTrace">IP Trace</h3>
             <div class="data-row"><span>Cloudflare</span><b id="trace-cf" class="mono text-highlight">--</b></div>
             <div class="data-row"><span>Claude</span><b id="trace-claude" class="mono text-highlight">--</b></div>
+            <button id="runTraceBtn" class="ghost-btn" data-i18n="runTrace">检测 Trace</button>
           </div>
           <div class="card-group">
             <h3 class="group-title" data-i18n="connectivity">Connectivity</h3>
             <div id="ping-list" class="ping-list"></div>
+            <button id="runConnectivityBtn" class="ghost-btn" data-i18n="runConnectivity">检测连通性</button>
           </div>
           <div class="card-group">
             <h3 class="group-title" data-i18n="chinaExit">China Exit</h3>

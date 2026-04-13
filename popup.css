@@ -46,6 +46,10 @@ body {
 .pulsing-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); }
 .icon-btn { background: var(--border); border: none; width: 30px; height: 30px; border-radius: 8px; color: var(--text-main); cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center;}
 .icon-btn:hover { background: var(--primary); color: white; }
+.icon-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.report-btn svg rect { fill: currentColor; stroke: none; opacity: 0.88; }
+.report-btn svg path { stroke: var(--bg-dark); }
+body.light .report-btn svg path { stroke: white; }
 .text-icon { font-size: 11px; font-weight: 700; width: auto; padding: 0 8px; }
 
 /* Content Viewport */
@@ -68,6 +72,46 @@ body {
   line-height: 1.2;
 }
 .ip-display p { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+.hero-route-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+.hero-route-card {
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+}
+.hero-route-card.single {
+  text-align: center;
+}
+.hero-route-card.highlight {
+  background: rgba(124, 58, 237, 0.10);
+  border-color: rgba(124, 58, 237, 0.22);
+}
+.hero-route-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.hero-route-ip {
+  margin-top: 8px;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--text-main);
+  word-break: break-all;
+}
+.hero-route-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
 .mono { font-family: 'JetBrains Mono', monospace; }
 .text-highlight { color: var(--highlight); }
 
@@ -151,3 +195,31 @@ body {
 .ghost-btn { width: 100%; padding: 10px; background: var(--border); border: none; border-radius: 10px; color: var(--text-main); font-size: 12px; font-weight: 700; cursor: pointer; margin-top: 10px; transition: 0.2s; }
 .ghost-btn:hover { background: var(--primary); color: white; }
 .mini-muted { font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.4; }
+.mini-proxy-card {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)), var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+.mini-proxy-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.mini-proxy-title { font-size: 13px; font-weight: 900; }
+.mini-proxy-status { margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--text-muted); }
+.mini-proxy-grid { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: end; }
+.mini-proxy-field { display: grid; gap: 6px; }
+.mini-proxy-field label { font-size: 11px; font-weight: 800; color: var(--text-muted); }
+.mini-proxy-field select {
+  width: 100%;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-main);
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.mini-action-btn { margin-top: 0; width: auto; min-width: 88px; height: 38px; padding: 0 12px; }
+.mini-icon-btn { width: 34px; height: 34px; }
+.mini-node-box { display: grid; gap: 10px; }
