@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Atlas Proxy Pro</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #475569;
+      --line: #e2e8f0;
+      --primary: #2563eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #eef4ff 0%, var(--bg) 280px);
+      color: var(--text);
+      line-height: 1.7;
+    }
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 20px 72px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+    }
+    .eyebrow {
+      color: var(--primary);
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    h1 {
+      margin: 10px 0 8px;
+      font-size: 40px;
+      line-height: 1.08;
+    }
+    .sub {
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+    h2 {
+      margin-top: 28px;
+      font-size: 20px;
+    }
+    p, li { color: var(--muted); }
+    ul { padding-left: 20px; }
+    .foot {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    a { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="card">
+      <div class="eyebrow">Atlas Proxy Pro</div>
+      <h1>Privacy Policy</h1>
+      <div class="sub">Last updated: April 13, 2026</div>
+
+      <h2>1. Overview</h2>
+      <p>Atlas Proxy Pro is a Chrome extension for proxy switching, browser environment alignment, and network diagnostics. The extension primarily works locally in the browser. Some manual diagnostic features send requests to a remote diagnostics endpoint so the extension can return IP, DNS, and risk-analysis results.</p>
+
+      <h2>2. Data Processed Locally</h2>
+      <p>The extension stores and processes the following data locally by using Chrome extension storage:</p>
+      <ul>
+        <li>Proxy profiles and routing rules</li>
+        <li>Selected mode, active node, and bypass list</li>
+        <li>Theme and language preferences</li>
+        <li>Timezone and language override settings</li>
+        <li>Cached diagnostic snapshots such as exit IP, country, city, timezone, and DNS results</li>
+      </ul>
+
+      <h2>3. Page Access and Browser Environment Checks</h2>
+      <p>When you use selected diagnostics features, the extension may access the currently selected tab or a user-selected tab in order to read the tab URL and title for display and inspect environment values such as timezone, language, WebRTC, WebGL, Canvas hash, screen size, viewport, and related browser capability signals.</p>
+      <p>These checks are performed locally in the browser. The extension is not designed to collect page text, prompts, form input, cookies, or account credentials for remote transmission as part of normal diagnostics.</p>
+
+      <h2>4. Remote Diagnostic Requests</h2>
+      <p>When you manually run diagnostic features, the extension may send requests to a remote diagnostics endpoint to retrieve exit IP and geographic information, IP reputation or trust score data, DNS diagnostic data, and network trace or reachability data.</p>
+      <p>These requests may include your current exit IP address or the IP address being analyzed, because that is required to complete the diagnostic result.</p>
+
+      <h2>5. Third-Party Services</h2>
+      <p>Remote diagnostics may depend on third-party IP intelligence or abuse-detection providers. As a result, the IP being checked may be shared with those providers strictly for diagnostic purposes.</p>
+
+      <h2>6. What We Do Not Intend to Collect</h2>
+      <ul>
+        <li>Claude prompts or conversation content</li>
+        <li>Login cookies</li>
+        <li>Account passwords</li>
+        <li>Page form contents</li>
+      </ul>
+
+      <h2>7. Your Choices</h2>
+      <ul>
+        <li>Avoid running manual diagnostics if you do not want remote checks</li>
+        <li>Remove the extension at any time</li>
+        <li>Clear extension storage by resetting or removing the extension</li>
+      </ul>
+
+      <h2>8. Contact</h2>
+      <p>If you have questions about this policy, contact the developer through the project's published support channel or repository page.</p>
+
+      <div class="foot">This page is published for Chrome Web Store listing and user transparency.</div>
+    </section>
+  </main>
+</body>
+</html>
