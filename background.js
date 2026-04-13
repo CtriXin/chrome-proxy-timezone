@@ -1,5 +1,5 @@
 let authCache = new Map();
-let API_BASE = 'https://proxy-api.evilsngx.workers.dev';
+const DEFAULT_API_BASE = 'https://proxy-api.evilsngx.workers.dev';
 let runtimeRefreshTimer = null;
 const LIGHT_PROBE_TTL_MS = 30 * 1000;
 const FULL_CONTEXT_TTL_MS = 5 * 60 * 1000;
@@ -12,6 +12,11 @@ const WARM_IPRISK_TIMEOUT_MS = 15000;
 const WARM_DNS_TIMEOUT_MS = 12000;
 const warmIpriskTasks = new Map();
 let warmDnsTask = null;
+const EXIT_ALERT_ALARM = 'atlas-exit-alert-watch';
+const DEFAULT_IP_ALERT_INTERVAL_MIN = 3;
+const PROFILE_LATENCY_KEY = 'profileLatencyMap';
+const PROFILE_LATENCY_AUTO_COOLDOWN_MS = 10 * 60 * 1000;
+const PROFILE_LATENCY_PROBE_URL = 'https://www.cloudflare.com/cdn-cgi/trace';
 
 const COUNTRY_LANGUAGE_MAP = {
   CN: 'zh-CN',
@@ -64,6 +69,7 @@ function restoreState() {
     });
   }
   applyProxy();
+  ensureExitAlertSchedule();
   updateIcon();
 }
 
@@ -79,33 +85,64 @@ chrome.runtime.onInstalled.addListener(() => {
     chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: 'disable_non_proxied_udp' });
   }
   
-  chrome.storage.local.get(['proxyMode', 'proxyProfiles'], (res) => {
+  chrome.storage.local.get(['proxyMode', 'proxyProfiles', 'ipAlertEnabled', 'ipAlertIntervalMin'], (res) => {
     const defaults = {};
     if (res.proxyProfiles === undefined) {
       defaults.proxyProfiles = [{ id: 'p1', name: 'Default', scheme: 'http', host: '', port: '', user: '', pass: '' }];
       defaults.activeProfileId = 'p1';
     }
+    if (res.ipAlertEnabled === undefined) defaults.ipAlertEnabled = true;
+    if (!Number.isFinite(Number(res.ipAlertIntervalMin))) defaults.ipAlertIntervalMin = DEFAULT_IP_ALERT_INTERVAL_MIN;
     if (Object.keys(defaults).length > 0) {
-      chrome.storage.local.set(defaults, () => { applyProxy(); updateIcon(); });
+      chrome.storage.local.set(defaults, () => { applyProxy(); ensureExitAlertSchedule(); updateIcon(); });
     } else {
-      applyProxy(); updateIcon();
+      applyProxy(); ensureExitAlertSchedule(); updateIcon();
     }
   });
+});
+
+chrome.runtime.onStartup?.addListener(() => {
+  ensureExitAlertSchedule();
 });
 
 chrome.storage.onChanged.addListener((changes) => {
   const proxyChanged = changes.proxyMode || changes.proxyProfiles || changes.activeProfileId || changes.proxyBypass || changes.rules;
   if (proxyChanged) applyProxy();
+  if (changes.ipAlertEnabled || changes.ipAlertIntervalMin) ensureExitAlertSchedule();
   updateIcon();
 });
 
 function updateIcon() {
-  chrome.storage.local.get(['proxyMode'], (res) => {
+  chrome.storage.local.get(['proxyMode', 'ipAlertState'], (res) => {
     const mode = res.proxyMode || 'system';
+    const alertState = res.ipAlertState || null;
+    if (alertState?.active) {
+      chrome.action.setBadgeText({ text: '!' });
+      chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
+      return;
+    }
     const badgeText = mode.charAt(0).toUpperCase();
     chrome.action.setBadgeText({ text: badgeText });
     chrome.action.setBadgeBackgroundColor({ color: mode === 'direct' ? '#94a3b8' : '#7c3aed' });
   });
+}
+
+async function ensureExitAlertSchedule() {
+  const prefs = await getLocalState(['ipAlertEnabled', 'ipAlertIntervalMin']);
+  if (prefs.ipAlertEnabled === false) {
+    await new Promise((resolve) => chrome.alarms.clear(EXIT_ALERT_ALARM, () => resolve()));
+    await updateIpAlertState(null);
+    return;
+  }
+  chrome.alarms.create(EXIT_ALERT_ALARM, {
+    delayInMinutes: 0.2,
+    periodInMinutes: Math.max(1, Number(prefs.ipAlertIntervalMin) || DEFAULT_IP_ALERT_INTERVAL_MIN)
+  });
+}
+
+async function updateIpAlertState(nextState = null) {
+  await setLocalState({ ipAlertState: nextState });
+  updateIcon();
 }
 
 function applyProxy() {
@@ -183,6 +220,8 @@ function scheduleRuntimeContextRefresh(delay = 450) {
   runtimeRefreshTimer = setTimeout(() => {
     probeExitSnapshot('force').catch(() => {
       refreshRuntimeContext().catch(() => {});
+    }).finally(() => {
+      measureActiveProfileLatency({ force: false, reason: 'auto' }).catch(() => {});
     });
   }, delay);
 }
@@ -209,7 +248,16 @@ function persistIpContext(data = {}) {
 }
 
 async function fetchRiskProfile(ip = '', timeoutMs = 6500) {
-  const data = await fetchJson(`${API_BASE}/api/risk?ip=${encodeURIComponent(ip)}`, timeoutMs);
+  const prefs = await getLocalState(['abuseIpDbKey']);
+  const abuseIpDbKey = String(prefs.abuseIpDbKey || '').trim();
+  let data;
+
+  if (abuseIpDbKey) {
+    data = await fetchRiskProfileDirect(ip, abuseIpDbKey, timeoutMs);
+  } else {
+    data = await fetchJson(`${DEFAULT_API_BASE}/api/risk?ip=${encodeURIComponent(ip)}`, timeoutMs);
+  }
+
   const targetIp = String(data?.ip || ip || '').trim();
   if (!targetIp.includes(':')) return data;
   try {
@@ -218,6 +266,127 @@ async function fetchRiskProfile(ip = '', timeoutMs = 6500) {
   } catch (error) {
     return data;
   }
+}
+
+function parseAsn(asValue) {
+  if (!asValue) return 0;
+  const match = String(asValue).match(/AS(\d+)/i);
+  return match ? Number(match[1]) : Number(asValue) || 0;
+}
+
+function clampScore(value) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function isPrivateIp(ip) {
+  return /^(10\.|127\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.|169\.254\.|::1|fc|fd)/i.test(String(ip || ''));
+}
+
+async function fetchRiskProfileDirect(ip = '', abuseIpDbKey = '', timeoutMs = 6500) {
+  let targetIp = String(ip || '').trim();
+  if (!targetIp) {
+    const trace = await fetchExitTrace();
+    targetIp = String(trace?.ip || '').trim();
+  }
+  if (!targetIp) throw new Error('Unable to resolve exit IP');
+
+  const geoFields = [
+    'status',
+    'message',
+    'country',
+    'countryCode',
+    'region',
+    'regionName',
+    'city',
+    'district',
+    'zip',
+    'lat',
+    'lon',
+    'timezone',
+    'isp',
+    'org',
+    'as',
+    'asname',
+    'reverse',
+    'proxy',
+    'hosting',
+    'mobile',
+    'query'
+  ].join(',');
+
+  const [abuseRes, geoRes] = await Promise.all([
+    fetchWithTimeout(`https://api.abuseipdb.com/api/v2/check?maxAgeInDays=90&ipAddress=${encodeURIComponent(targetIp)}`, {
+      headers: {
+        Key: abuseIpDbKey,
+        Accept: 'application/json'
+      }
+    }, timeoutMs).then(async (res) => {
+      if (!res.ok) throw new Error(`AbuseIPDB HTTP ${res.status}`);
+      return res.json();
+    }),
+    fetchWithTimeout(`http://ip-api.com/json/${encodeURIComponent(targetIp)}?fields=${geoFields}`, {}, timeoutMs).then(async (res) => {
+      if (!res.ok) throw new Error(`ip-api HTTP ${res.status}`);
+      return res.json();
+    })
+  ]);
+
+  const abuse = abuseRes?.data || {};
+  const geo = geoRes || {};
+  const abuseScore = Number(abuse.abuseConfidenceScore || 0);
+  const usageType = String(abuse.usageType || '').toLowerCase();
+  const reverse = geo.reverse || abuse.domain || null;
+  const countryCode = geo.countryCode || abuse.countryCode || '';
+  const isPrivate = isPrivateIp(targetIp);
+  const isDataCenter = usageType.includes('data center') || usageType.includes('hosting') || !!geo.hosting;
+  const heuristicPenalty = (geo.proxy ? 18 : 0) + (geo.hosting ? 16 : 0) + (geo.mobile ? 3 : 0);
+  const trustScore = clampScore(100 - Math.max(abuseScore, heuristicPenalty));
+  const timezone = geo.timezone || 'UTC';
+
+  return {
+    ip: targetIp,
+    trust_score: trustScore,
+    country: abuse.countryName || geo.country || 'Unknown',
+    countryCode,
+    region: geo.regionName || geo.region || '',
+    city: abuse.city || geo.city || 'Unknown',
+    district: geo.district || '',
+    timezone,
+    zip: geo.zip || '',
+    lat: geo.lat || null,
+    lon: geo.lon || null,
+    asn: parseAsn(abuse.asn || geo.as),
+    asOrganization: abuse.isp || geo.org || geo.isp || 'Unknown',
+    isp: geo.isp || abuse.isp || 'Unknown',
+    reverseDns: reverse,
+    hostPtr: reverse,
+    fakeIp: isPrivate,
+    chinaDns: null,
+    ipLanguage: inferLanguageFromIp(countryCode, timezone),
+    is_vpn: isDataCenter || (!!geo.proxy && abuseScore > 0),
+    is_proxy: !!geo.proxy || abuseScore > 25,
+    is_tor: usageType.includes('tor'),
+    is_datacenter: isDataCenter,
+    is_relay: usageType.includes('relay'),
+    is_anonymous: isDataCenter || !!geo.proxy,
+    is_attacker: abuseScore > 25,
+    is_abuser: abuseScore > 0,
+    is_threats: abuseScore > 50,
+    is_bogon: isPrivate || !countryCode,
+    is_spam: abuseScore > 10,
+    is_batch: usageType.includes('automation') || usageType.includes('crawler'),
+    is_scanner: usageType.includes('scanner') || abuseScore > 40,
+    is_botnet: usageType.includes('botnet') || abuseScore > 60,
+    raw: {
+      abuseScore,
+      usageType: abuse.usageType || '',
+      reports: abuse.totalReports || 0,
+      lastReportedAt: abuse.lastReportedAt || null,
+      mobile: !!geo.mobile,
+      proxy: !!geo.proxy,
+      hosting: !!geo.hosting,
+      source: 'direct'
+    }
+  };
 }
 
 async function fetchWithTimeout(url, options = {}, timeoutMs = 6500) {
@@ -398,6 +567,31 @@ async function setLocalState(nextState) {
   return new Promise((resolve) => chrome.storage.local.set(nextState, resolve));
 }
 
+async function handleExitAlertProbe() {
+  const prefs = await getLocalState(['ipAlertEnabled']);
+  if (prefs.ipAlertEnabled === false) return;
+  const result = await probeExitSnapshot('light');
+  if (!result?.changed) return;
+  const previous = result.previousSnapshot || {};
+  const current = result.snapshot || {};
+  if (!previous.currentExitIp || !current.currentExitIp || previous.currentExitIp === current.currentExitIp) return;
+  await updateIpAlertState({
+    active: true,
+    at: Date.now(),
+    previousIp: previous.currentExitIp || '',
+    previousCountry: previous.ipCountry || '',
+    previousCity: previous.ipCity || '',
+    currentIp: current.currentExitIp || '',
+    currentCountry: current.ipCountry || '',
+    currentCity: current.ipCity || ''
+  });
+}
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm?.name !== EXIT_ALERT_ALARM) return;
+  handleExitAlertProbe().catch(() => {});
+});
+
 function normalizeCacheIp(ip = '') {
   return String(ip || '').trim() || '__current__';
 }
@@ -457,7 +651,7 @@ function warmDnsCache() {
   if (warmDnsTask) return warmDnsTask;
   warmDnsTask = (async () => {
     try {
-      const data = await fetchJson(`${API_BASE}/api/dns`, WARM_DNS_TIMEOUT_MS);
+      const data = await fetchDnsLeakData(WARM_DNS_TIMEOUT_MS);
       await writeDnsCache(data);
       return data;
     } finally {
@@ -479,6 +673,10 @@ async function getExitSnapshot() {
   ]);
 }
 
+async function fetchDnsLeakData(timeoutMs = 4500) {
+  return fetchJson('https://edns.ip-api.com/json', timeoutMs);
+}
+
 async function probeExitSnapshot(mode = 'light') {
   const snapshot = await getExitSnapshot();
   const now = Date.now();
@@ -486,7 +684,7 @@ async function probeExitSnapshot(mode = 'light') {
   const fullFresh = snapshot.lastContextRefreshAt && (now - snapshot.lastContextRefreshAt < FULL_CONTEXT_TTL_MS);
 
   if (lightFresh && mode !== 'force') {
-    return { snapshot, changed: false, refreshed: false };
+    return { snapshot, previousSnapshot: snapshot, changed: false, refreshed: false };
   }
 
   const trace = await fetchExitTrace();
@@ -507,6 +705,7 @@ async function probeExitSnapshot(mode = 'light') {
         ipCity: data.city || snapshot.ipCity,
         ipTimezone: data.timezone || snapshot.ipTimezone
       },
+      previousSnapshot: snapshot,
       changed,
       refreshed: true
     };
@@ -518,6 +717,7 @@ async function probeExitSnapshot(mode = 'light') {
       currentExitIp,
       lastExitProbeAt: now
     },
+    previousSnapshot: snapshot,
     changed,
     refreshed: false
   };
@@ -553,12 +753,20 @@ function buildPacRuleCheck(rule, profileToken) {
   return `if (shExpMatch(host, "${pattern}")) return "${profileToken}; DIRECT";`;
 }
 
+function getProxyAuthKey(details = {}) {
+  const proxyHost = details?.proxyServer?.host || details?.challenger?.host || '';
+  const proxyPort = details?.proxyServer?.port || details?.challenger?.port || '';
+  if (!proxyHost || !proxyPort) return '';
+  return `${proxyHost}:${proxyPort}`;
+}
+
 function handleAuth(details, asyncCallback) {
-  if (!details.isProxy) return asyncCallback({});
-  const key = `${details.proxyServer.host}:${details.proxyServer.port}`;
+  if (!details?.isProxy) return asyncCallback({});
+  const key = getProxyAuthKey(details);
+  if (!key) return asyncCallback({});
   const auth = authCache.get(key);
-  if (!auth) return asyncCallback({});
-  asyncCallback({ authCredentials: { username: auth.user, password: auth.pass } });
+  if (!auth?.user) return asyncCallback({});
+  asyncCallback({ authCredentials: { username: auth.user, password: auth.pass || '' } });
 }
 
 function updateAuthCache(res) {
@@ -566,6 +774,69 @@ function updateAuthCache(res) {
   (res.proxyProfiles || []).forEach(p => {
     if (p.user) authCache.set(`${p.host}:${p.port}`, { user: p.user, pass: p.pass });
   });
+}
+
+function getActiveProfileContext(res = {}) {
+  const mode = res.proxyMode || 'system';
+  if (!['manual', 'auto'].includes(mode)) return { mode, activeProfile: null, profiles: [] };
+  const profiles = (res.proxyProfiles || []).filter((item) => item.id !== MINI_PROFILE_ID);
+  const desiredActiveId = (!MINI_PROXY_ENABLED && res.activeProfileId === MINI_PROFILE_ID)
+    ? (profiles[0]?.id || '')
+    : (res.activeProfileId || profiles[0]?.id || '');
+  return {
+    mode,
+    profiles,
+    activeProfileId: desiredActiveId,
+    activeProfile: profiles.find((item) => item.id === desiredActiveId) || null
+  };
+}
+
+async function writeProfileLatencyEntry(profileId, entry = {}) {
+  if (!profileId) return null;
+  const state = await getLocalState([PROFILE_LATENCY_KEY]);
+  const nextMap = { ...(state[PROFILE_LATENCY_KEY] || {}) };
+  nextMap[profileId] = {
+    latency: Number.isFinite(Number(entry.latency)) ? Math.round(Number(entry.latency)) : null,
+    ok: !!entry.ok,
+    checkedAt: entry.checkedAt || Date.now(),
+    reason: entry.reason || '',
+    error: entry.error || '',
+    url: entry.url || PROFILE_LATENCY_PROBE_URL
+  };
+  await setLocalState({ [PROFILE_LATENCY_KEY]: nextMap });
+  return nextMap[profileId];
+}
+
+async function measureActiveProfileLatency(options = {}) {
+  const force = !!options.force;
+  const reason = options.reason || 'auto';
+  const res = await getLocalState(['proxyMode', 'proxyProfiles', 'activeProfileId', PROFILE_LATENCY_KEY]);
+  const context = getActiveProfileContext(res);
+  const active = context.activeProfile;
+  if (!active?.id || !active.host) {
+    return { ok: false, skipped: true, reason: 'inactive_mode' };
+  }
+
+  const cache = res[PROFILE_LATENCY_KEY] || {};
+  const previous = cache[active.id];
+  if (!force && previous?.checkedAt && (Date.now() - Number(previous.checkedAt) < PROFILE_LATENCY_AUTO_COOLDOWN_MS)) {
+    return { ok: !!previous.ok, cached: true, profileId: active.id, entry: previous };
+  }
+
+  const probe = await probeEndpoint(PROFILE_LATENCY_PROBE_URL, { timeout: 5000 });
+  const entry = await writeProfileLatencyEntry(active.id, {
+    ok: probe.ok,
+    latency: probe.ok ? probe.latency : null,
+    checkedAt: Date.now(),
+    reason,
+    error: probe.ok ? '' : (probe.error || 'probe_failed')
+  });
+  return {
+    ok: !!probe.ok,
+    profileId: active.id,
+    entry,
+    error: probe.ok ? '' : (probe.error || 'probe_failed')
+  };
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -614,7 +885,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'fetchDnsLeak') {
     (async () => {
       try {
-        const data = await fetchJson(`${API_BASE}/api/dns`, 4500);
+        const data = await fetchDnsLeakData(4500);
         await writeDnsCache(data);
         sendResponse({ data, meta: { cached: false, stale: false, at: Date.now() } });
       } catch (err) {
@@ -651,8 +922,23 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     probeExitSnapshot(request.mode || 'light').then(sendResponse).catch((err) => sendResponse({ error: err.message }));
     return true;
   }
+  if (request.action === 'getIpAlertState') {
+    getLocalState(['ipAlertState']).then((data) => sendResponse({ state: data.ipAlertState || null })).catch((err) => sendResponse({ error: err.message }));
+    return true;
+  }
+  if (request.action === 'ackIpAlert') {
+    updateIpAlertState(null).then(() => sendResponse({ ok: true })).catch((err) => sendResponse({ error: err.message }));
+    return true;
+  }
   if (request.action === 'probeEndpoint') {
     probeEndpoint(request.url, request.options || {}).then(sendResponse);
+    return true;
+  }
+  if (request.action === 'measureActiveProfileLatency') {
+    measureActiveProfileLatency({
+      force: request.force !== false,
+      reason: request.reason || 'manual'
+    }).then(sendResponse).catch((err) => sendResponse({ ok: false, error: err.message }));
     return true;
   }
 });

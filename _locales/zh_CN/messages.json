@@ -81,10 +81,10 @@
     "message": "连通性测试"
   },
   "chinaExit": {
-    "message": "中国出口 (China Exit)"
+    "message": "中国出口"
   },
   "trustScore": {
-    "message": "信用评分 (Trust Score)"
+    "message": "信用评分"
   },
   "ipAttr": {
     "message": "IP 属性"
@@ -117,7 +117,7 @@
     "message": "VPN"
   },
   "proxy": {
-    "message": "代理 (Proxy)"
+    "message": "代理"
   },
   "tor": {
     "message": "Tor"
@@ -274,5 +274,29 @@
   },
   "detected": {
     "message": "已检测到"
+  },
+  "ipAlertTitle": {
+    "message": "出口 IP 已变化"
+  },
+  "ipAlertDismiss": {
+    "message": "已知晓"
+  },
+  "runClaudeCheck": {
+    "message": "立即检测 Claude"
+  },
+  "envAlignment": {
+    "message": "环境一致性"
+  },
+  "timezoneMatch": {
+    "message": "时区一致性"
+  },
+  "languageMatch": {
+    "message": "语言一致性"
+  },
+  "matched": {
+    "message": "一致"
+  },
+  "mismatched": {
+    "message": "不一致"
   }
 }

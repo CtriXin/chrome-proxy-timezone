@@ -65,6 +65,51 @@
     return Math.round((date.getTime() - zonedAsUtc) / 60000);
   }
 
+  function hashString(input) {
+    let hash = 2166136261;
+    const text = String(input || '');
+    for (let i = 0; i < text.length; i += 1) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (`0000000${(hash >>> 0).toString(16)}`).slice(-8);
+  }
+
+  function computeCanvasHash() {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 280;
+      canvas.height = 72;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return '';
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#22c55e';
+      ctx.font = '18px sans-serif';
+      ctx.fillText('Atlas Probe', 12, 32);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText(navigator.userAgent.slice(0, 24), 12, 54);
+      return hashString(canvas.toDataURL());
+    } catch (error) {
+      return '';
+    }
+  }
+
+  function getWebglProbe() {
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) return { status: 'unsupported', value: '' };
+      const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+      if (!debugInfo) return { status: 'unsupported', value: '' };
+      const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
+      const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+      return { status: 'ok', value: `${vendor} / ${renderer}` };
+    } catch (error) {
+      return { status: 'failed', value: '' };
+    }
+  }
+
   function PatchedDateTimeFormat(locales, options) {
     const [nextLocales, nextOptions] = withDefaults(locales, options);
     return new NativeDateTimeFormat(nextLocales, nextOptions);
@@ -144,24 +189,43 @@
     }
 
     if (detail.type === 'webgl') {
-      try {
-        const canvas = document.createElement('canvas');
-        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-        if (!gl) {
-          respond({ status: 'unsupported' });
-          return;
-        }
-        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
-        if (!debugInfo) {
-          respond({ status: 'unsupported' });
-          return;
-        }
-        const vendor = gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL);
-        const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-        respond({ status: 'ok', value: `${vendor} / ${renderer}` });
-      } catch (error) {
-        respond({ status: 'failed' });
-      }
+      respond(getWebglProbe());
+      return;
+    }
+
+    if (detail.type === 'envProfile') {
+      const webgl = getWebglProbe();
+      respond({
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+        language: navigator.language || '',
+        languages: Array.isArray(navigator.languages) ? navigator.languages : [],
+        userAgent: navigator.userAgent || '',
+        platform: navigator.platform || '',
+        vendor: navigator.vendor || '',
+        webdriver: !!navigator.webdriver,
+        hardwareConcurrency: navigator.hardwareConcurrency || null,
+        deviceMemory: navigator.deviceMemory || null,
+        maxTouchPoints: navigator.maxTouchPoints || 0,
+        cookieEnabled: navigator.cookieEnabled !== false,
+        doNotTrack: navigator.doNotTrack || '',
+        screen: {
+          width: window.screen?.width || 0,
+          height: window.screen?.height || 0,
+          availWidth: window.screen?.availWidth || 0,
+          availHeight: window.screen?.availHeight || 0,
+          colorDepth: window.screen?.colorDepth || 0,
+          pixelDepth: window.screen?.pixelDepth || 0,
+          dpr: window.devicePixelRatio || 1
+        },
+        viewport: {
+          innerWidth: window.innerWidth || 0,
+          innerHeight: window.innerHeight || 0,
+          outerWidth: window.outerWidth || 0,
+          outerHeight: window.outerHeight || 0
+        },
+        canvasHash: computeCanvasHash(),
+        webgl
+      });
       return;
     }
 

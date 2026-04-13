@@ -2,9 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <script src="theme-boot.js"></script>
   <link rel="stylesheet" href="popup.css">
 </head>
-<body class="dark">
+<body>
   <div class="app-container">
     <header class="main-header">
       <div class="brand-info">
@@ -29,12 +30,20 @@
     <main class="content-viewport">
       <section id="tab-home" class="view active">
         <div class="main-hero">
+          <button id="heroRefreshBtn" class="hero-refresh-btn" title="刷新出口 IP" aria-label="刷新出口 IP">↻</button>
           <div class="ip-display">
-            <span id="heroSummaryLabel" class="label">当前出口 IP</span>
+            <span id="heroSummaryLabel" class="label" data-i18n="heroLabel">Current Exit IP</span>
             <h2 id="hero-ip" class="mono">--</h2>
             <p id="hero-geo" data-i18n="heroDetecting">Detecting...</p>
             <div id="heroRouteGrid" class="hero-route-grid"></div>
           </div>
+        </div>
+        <div id="ipAlertBanner" class="ip-alert-banner" style="display:none">
+          <div class="ip-alert-copy">
+            <div class="ip-alert-title" data-i18n="ipAlertTitle">出口 IP 已变化</div>
+            <div id="ipAlertText" class="ip-alert-text">--</div>
+          </div>
+          <button id="ipAlertDismiss" class="ghost-btn small" data-i18n="ipAlertDismiss">已知晓</button>
         </div>
 
         <div class="control-cards">
@@ -78,6 +87,7 @@
             <label data-i18n="labelProfile">Node</label>
             <select id="activeProfile"></select>
           </div>
+          <div id="activeProfileLatency" class="control-meta" style="display:none">--</div>
           <div class="control-card">
             <label data-i18n="labelTz">Timezone</label>
             <select id="tzSelect">
@@ -150,6 +160,7 @@
 
       <section id="tab-claude" class="view">
         <div class="scan-scroll-area">
+          <button id="runClaudeBtn" class="primary-btn" data-i18n="runClaudeCheck">立即检测 Claude</button>
           <div class="card-group text-center">
             <h3 class="group-title" data-i18n="trustScore">Trust Score</h3>
             <div class="score-ring-large">
@@ -179,6 +190,13 @@
             <div class="data-row"><span data-i18n="claudeAi">Claude AI</span><b id="claudeAiStatus">--</b></div>
             <div class="data-row"><span data-i18n="claudeCode">Claude Code</span><b id="claudeCodeStatus">--</b></div>
             <div class="data-row"><span>Latency</span><b id="claudeLatencyText" class="mono">--</b></div>
+          </div>
+          <div class="card-group">
+            <h3 class="group-title" data-i18n="envAlignment">Environment Alignment</h3>
+            <div class="data-row"><span data-i18n="timezoneMatch">Timezone</span><b id="claudeTzMatch">--</b></div>
+            <div id="claudeTzHint" class="mini-muted">--</div>
+            <div class="data-row"><span data-i18n="languageMatch">Language</span><b id="claudeLangMatch">--</b></div>
+            <div id="claudeLangHint" class="mini-muted">--</div>
           </div>
         </div>
       </section>

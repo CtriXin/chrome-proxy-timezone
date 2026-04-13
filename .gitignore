@@ -1,1 +1,15 @@
 .DS_Store
+
+# Local restore / agent state
+.ai/
+
+# Build artifacts
+/dist/
+*.zip
+
+# Private backend / local tools not intended for the public repo
+cf-worker.js
+mini-proxy/
+
+# Local binaries / caches
+*.log

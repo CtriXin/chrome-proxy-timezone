@@ -12,6 +12,7 @@ let heroSummaryRunId = 0;
 let heroSummaryCache = { key: '', at: 0, groups: [] };
 let claudeCheckRunId = 0;
 let auditRunId = 0;
+let latestIpAlertState = null;
 
 const TIMEZONE_GROUPS = [
   {
@@ -118,10 +119,68 @@ const DATA = {
   timezones: TIMEZONE_GROUPS,
   languages: LANGUAGE_GROUPS
 };
+const SYSTEM_THEME_MEDIA = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+
+const COUNTRY_LANGUAGE_MAP = {
+  CN: 'zh-CN',
+  TW: 'zh-TW',
+  HK: 'zh-TW',
+  US: 'en-US',
+  GB: 'en-GB',
+  AU: 'en-GB',
+  CA: 'en-US',
+  SG: 'en-US',
+  JP: 'ja-JP',
+  KR: 'ko-KR',
+  FR: 'fr-FR',
+  DE: 'de-DE',
+  ES: 'es-ES',
+  MX: 'es-ES',
+  AR: 'es-ES',
+  IN: 'hi-IN',
+  VN: 'vi-VN',
+  RU: 'ru-RU'
+};
+
+const TIMEZONE_LANGUAGE_MAP = {
+  'Asia/Shanghai': 'zh-CN',
+  'Asia/Hong_Kong': 'zh-TW',
+  'Asia/Taipei': 'zh-TW',
+  'Asia/Tokyo': 'ja-JP',
+  'Asia/Seoul': 'ko-KR',
+  'Asia/Singapore': 'en-US',
+  'Europe/London': 'en-GB',
+  'Europe/Paris': 'fr-FR',
+  'Europe/Berlin': 'de-DE',
+  'Europe/Madrid': 'es-ES',
+  'Europe/Moscow': 'ru-RU',
+  'Asia/Kolkata': 'hi-IN',
+  'Asia/Bangkok': 'vi-VN',
+  'America/New_York': 'en-US',
+  'America/Chicago': 'en-US',
+  'America/Los_Angeles': 'en-US',
+  'America/Phoenix': 'en-US'
+};
 
 // --- 统一 i18n 逻辑 ---
 function i18n(key) {
   return localeMessages[key]?.message || chrome.i18n.getMessage(key) || key;
+}
+
+function resolveTheme(theme) {
+  if (theme === 'auto') return SYSTEM_THEME_MEDIA?.matches ? 'dark' : 'light';
+  return theme === 'light' ? 'light' : 'dark';
+}
+
+function getThemeIcon(theme) {
+  if (theme === 'auto') return '◐';
+  return theme === 'light' ? '☀️' : '🌙';
+}
+
+function getNextTheme(theme) {
+  if (theme === 'dark') return 'auto';
+  if (theme === 'auto') return 'light';
+  return 'dark';
 }
 
 async function loadLocale(lang) {
@@ -140,6 +199,7 @@ function applyI18n() {
     const key = el.getAttribute('data-i18n');
     el.innerText = i18n(key);
   });
+  renderIpAlertBanner(latestIpAlertState);
 }
 
 // --- UI 组件生成 ---
@@ -186,13 +246,85 @@ function withMiniProfile(profiles = []) {
   return list;
 }
 
+function getProfileByIdFromList(profileId = '', profiles = []) {
+  return (profiles || []).find((item) => item.id === profileId) || null;
+}
+
+function shouldWarnMissingCredentials(profile = null) {
+  if (!profile?.host) return false;
+  const host = String(profile.host).trim().toLowerCase();
+  if (!host || host === 'localhost' || host === '127.0.0.1' || host === '::1') return false;
+  if (host.startsWith('10.') || host.startsWith('192.168.') || /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) return false;
+  return !String(profile.user || '').trim() || !String(profile.pass || '').trim();
+}
+
+function getProfileLatencyTone(latency) {
+  if (!Number.isFinite(Number(latency))) return 'bad';
+  const value = Number(latency);
+  if (value <= 250) return 'good';
+  if (value <= 800) return 'warn';
+  return 'bad';
+}
+
+function formatLatencyAge(ts = 0) {
+  const delta = Math.max(0, Date.now() - Number(ts || 0));
+  const sec = Math.round(delta / 1000);
+  if (sec < 10) return currentUiLang === 'zh' ? '刚刚' : 'just now';
+  if (sec < 60) return currentUiLang === 'zh' ? `${sec} 秒前` : `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return currentUiLang === 'zh' ? `${min} 分钟前` : `${min}m ago`;
+  const hour = Math.round(min / 60);
+  if (hour < 48) return currentUiLang === 'zh' ? `${hour} 小时前` : `${hour}h ago`;
+  const day = Math.round(hour / 24);
+  return currentUiLang === 'zh' ? `${day} 天前` : `${day}d ago`;
+}
+
+function renderActiveProfileLatency(profileId = '', latencyMap = {}, profiles = []) {
+  const el = $('#activeProfileLatency');
+  if (!el) return;
+  const entry = latencyMap?.[profileId];
+  const profile = getProfileByIdFromList(profileId, profiles);
+  const missingCreds = shouldWarnMissingCredentials(profile);
+  el.className = 'control-meta';
+  if (!profileId) {
+    el.style.display = 'none';
+    el.innerText = '--';
+    return;
+  }
+  el.style.display = '';
+  if (!entry?.checkedAt && missingCreds) {
+    el.classList.add('warn');
+    el.innerText = currentUiLang === 'zh'
+      ? '当前节点未配置用户名或密码；如果该 proxy 需要鉴权，请先补全凭据。'
+      : 'Username or password is missing for the active proxy.';
+    return;
+  }
+  if (!entry?.checkedAt) {
+    el.classList.add('warn');
+    el.innerText = currentUiLang === 'zh' ? '暂无测速记录。' : 'No latency record yet.';
+    return;
+  }
+  if (entry.ok && Number.isFinite(Number(entry.latency))) {
+    el.classList.add(getProfileLatencyTone(entry.latency));
+    el.innerText = currentUiLang === 'zh'
+      ? `最近测速 ${Math.round(Number(entry.latency))}ms · ${formatLatencyAge(entry.checkedAt)}${missingCreds ? ' · 未配置凭据' : ''}`
+      : `Latest latency ${Math.round(Number(entry.latency))}ms · ${formatLatencyAge(entry.checkedAt)}${missingCreds ? ' · missing credentials' : ''}`;
+    return;
+  }
+  el.classList.add('bad');
+  el.innerText = currentUiLang === 'zh'
+    ? `最近测速失败 · ${formatLatencyAge(entry.checkedAt)}${missingCreds ? ' · 未配置凭据' : ''}`
+    : `Latest probe failed · ${formatLatencyAge(entry.checkedAt)}${missingCreds ? ' · missing credentials' : ''}`;
+}
+
 // --- 状态管理 ---
 async function loadSettings() {
   const res = await chrome.storage.local.get([
     'proxyMode', 'proxyProfiles', 'activeProfileId', 'theme', 'timezone', 'language',
     'ipTimezone', 'ipLanguage', 'uiLang', 'miniSubUrl', 'miniSubscriptions',
     'miniActiveNode', 'miniNodeDelays', 'miniNodeDelayAt', 'currentExitIp',
-    'ipCountry', 'ipCity', 'lastExitProbeAt', 'lastContextRefreshAt'
+    'ipCountry', 'ipCity', 'lastExitProbeAt', 'lastContextRefreshAt', 'ipAlertState',
+    'profileLatencyMap'
   ]);
   const realProfiles = (res.proxyProfiles || []).filter((item) => item.id !== MINI_PROFILE_ID);
   if (res.proxyMode === 'mini' || (!MINI_PROXY_ENABLED && res.activeProfileId === MINI_PROFILE_ID)) {
@@ -215,9 +347,12 @@ async function loadSettings() {
   $('#langSelect').value = res.language || '';
   updateFollowIpOptions(res);
   applyHeroSnapshot(res);
+  latestIpAlertState = res.ipAlertState || null;
+  renderIpAlertBanner(latestIpAlertState);
 
   const sel = $('#activeProfile');
   sel.innerHTML = '';
+  const latencyMap = res.profileLatencyMap || {};
   withMiniProfile(realProfiles).forEach(p => {
     const opt = new Option(p.name || `${p.host}:${p.port}`, p.id);
     sel.add(opt);
@@ -226,6 +361,7 @@ async function loadSettings() {
   const useNodeMode = res.proxyMode === 'manual' || res.proxyMode === 'auto';
   const activeIsMini = MINI_PROXY_ENABLED && (res.activeProfileId || '') === MINI_PROFILE_ID && useNodeMode;
   $('#profileRow').style.display = useNodeMode ? 'flex' : 'none';
+  renderActiveProfileLatency(useNodeMode ? (res.activeProfileId || '') : '', latencyMap, realProfiles);
   $('#miniProxyRow').style.display = 'none';
   if (MINI_PROXY_ENABLED) {
     renderMiniSubscriptions(res);
@@ -235,15 +371,39 @@ async function loadSettings() {
   updateTheme(res.theme || 'dark');
   if (!popupInitialized) {
     popupInitialized = true;
-    fetchInitialIp().catch(() => {});
     return;
   }
-  refreshHeroRouteSummary(res, { preferCache: true }).catch(() => {});
+}
+
+function renderIpAlertBanner(state = null) {
+  latestIpAlertState = state || null;
+  const banner = $('#ipAlertBanner');
+  const text = $('#ipAlertText');
+  if (!banner || !text) return;
+  if (!state?.active || !state.previousIp || !state.currentIp) {
+    banner.style.display = 'none';
+    text.innerText = '--';
+    return;
+  }
+  const prevGeo = [state.previousCountry, state.previousCity].filter(Boolean).join(' / ');
+  const nextGeo = [state.currentCountry, state.currentCity].filter(Boolean).join(' / ');
+  const prev = prevGeo ? `${state.previousIp} (${prevGeo})` : state.previousIp;
+  const next = nextGeo ? `${state.currentIp} (${nextGeo})` : state.currentIp;
+  text.innerText = `${prev} -> ${next}`;
+  banner.style.display = 'flex';
 }
 
 function updateTheme(theme) {
-  document.body.className = theme;
-  $('#themeToggle').textContent = theme === 'light' ? '🌙' : '☀️';
+  const resolved = resolveTheme(theme);
+  document.body.className = resolved;
+  document.documentElement.classList.remove('light', 'dark');
+  document.documentElement.classList.add(resolved);
+  try {
+    localStorage.setItem('atlas_theme_pref', theme);
+    localStorage.setItem('atlas_theme', resolved);
+  } catch (error) {}
+  $('#themeToggle').textContent = getThemeIcon(theme);
+  $('#themeToggle').title = theme === 'auto' ? (currentUiLang === 'zh' ? '自动主题' : 'Auto theme') : `${theme}`;
 }
 
 function getHeroCacheKey(snapshot = {}) {
@@ -343,23 +503,10 @@ function applyHeroSnapshot(snapshot = {}) {
   if (heroGeo) heroGeo.innerText = i18n('heroDetecting');
 }
 
-async function fetchInitialIp() {
-  const snapshotRes = await sendRuntimeMessage({ action: 'getExitSnapshot' });
-  const snapshot = snapshotRes?.snapshot || {};
-  applyHeroSnapshot(snapshot);
-  refreshHeroRouteSummary(snapshot, { preferCache: true }).catch(() => {});
-
-  const probeRes = await sendRuntimeMessage({ action: 'probeExit', mode: 'light' });
-  const next = probeRes?.snapshot || {};
-  applyHeroSnapshot(next);
-  refreshHeroRouteSummary(next, { force: !!probeRes?.changed }).catch(() => {});
-}
-
 async function forceRefreshExitHero() {
   const probeRes = await sendRuntimeMessage({ action: 'probeExit', mode: 'force' });
   const next = probeRes?.snapshot || {};
   applyHeroSnapshot(next);
-  await refreshHeroRouteSummary(next, { force: true }).catch(() => {});
 }
 
 function renderMiniSubscriptions(res = {}) {
@@ -801,8 +948,46 @@ function normalizePopupIpMeta(primary = null, cross = null, ip = '') {
     trust_score: primary?.trust_score,
     countryCode: pickFirstValue(primary?.countryCode, ipapi?.countryCode, ipsb?.countryCode),
     region: pickFirstValue(primary?.region, ipapi?.region, ipsb?.region),
+    timezone: pickFirstValue(primary?.timezone, ipapi?.timezone),
     raw: primary?.raw || {}
   };
+}
+
+function inferLanguageFromIp(countryCode, timezone) {
+  if (countryCode && COUNTRY_LANGUAGE_MAP[countryCode]) return COUNTRY_LANGUAGE_MAP[countryCode];
+  if (timezone && TIMEZONE_LANGUAGE_MAP[timezone]) return TIMEZONE_LANGUAGE_MAP[timezone];
+  return 'en-US';
+}
+
+function normalizeCompareValue(value = '') {
+  return String(value || '').trim().toLowerCase();
+}
+
+function languageMatches(currentValue = '', targetValue = '') {
+  const current = normalizeCompareValue(String(currentValue).split(',')[0]);
+  const target = normalizeCompareValue(String(targetValue).split(',')[0]);
+  if (!current || !target) return false;
+  return current === target || current.startsWith(target) || target.startsWith(current);
+}
+
+function renderClaudeAlignment(timezoneData = {}, languageData = {}) {
+  const tzOk = !!timezoneData.ok;
+  const langOk = !!languageData.ok;
+  setStatus($('#claudeTzMatch'), timezoneData.current ? (tzOk ? i18n('matched') : i18n('mismatched')) : '--', tzOk ? '--success' : '--danger');
+  setStatus($('#claudeLangMatch'), languageData.current ? (langOk ? i18n('matched') : i18n('mismatched')) : '--', langOk ? '--success' : '--danger');
+  $('#claudeTzHint').innerText = timezoneData.current
+    ? `${currentUiLang === 'zh' ? '当前' : 'Current'}: ${timezoneData.current} · ${currentUiLang === 'zh' ? '建议' : 'Target'}: ${timezoneData.target || '--'}`
+    : '--';
+  $('#claudeLangHint').innerText = languageData.current
+    ? `${currentUiLang === 'zh' ? '当前' : 'Current'}: ${languageData.current} · ${currentUiLang === 'zh' ? '建议' : 'Target'}: ${languageData.target || '--'}`
+    : '--';
+}
+
+function setClaudeAlignmentPending(text = '') {
+  setStatus($('#claudeTzMatch'), text || i18n('scanning'));
+  setStatus($('#claudeLangMatch'), text || i18n('scanning'));
+  $('#claudeTzHint').innerText = '--';
+  $('#claudeLangHint').innerText = '--';
 }
 
 function setClaudeScorePending(text = '等待权威评分...') {
@@ -843,10 +1028,13 @@ function renderClaudeRiskBadges(risk = {}, ip = '') {
 // --- 探测逻辑 (客户端直连，防 IP 漂移) ---
 async function runClaudeChecks() {
   const runId = ++claudeCheckRunId;
+  const runtimePrefsPromise = chrome.storage.local.get(['timezone', 'language', 'ipTimezone', 'ipLanguage']);
+  const pageEnvPromise = withTimeout(getPageEnvironment(), 2200, { error: 'timeout' });
   setStatus($('#claudeAiStatus'), i18n('scanning'));
   setStatus($('#claudeCodeStatus'), i18n('scanning'));
   setStatus($('#claudeLatencyText'), '--');
   setClaudeScorePending('等待 Claude Trace...');
+  setClaudeAlignmentPending(i18n('scanning'));
   $('#attr-country').innerText = i18n('scanning');
   $('#attr-city').innerText = i18n('scanning');
   $('#attr-asn').innerText = i18n('scanning');
@@ -876,6 +1064,7 @@ async function runClaudeChecks() {
   if (!claudeTraceIp || claudeTraceIp === '--') {
     setClaudeScorePending('未取得 Claude 出口 IP');
     $('#claudeIpType').innerText = currentUiLang === 'zh' ? 'Trace 失败' : 'Trace failed';
+    setClaudeAlignmentPending('--');
     await Promise.allSettled([claudeAiPromise, claudeCodePromise]);
     return;
   }
@@ -923,7 +1112,40 @@ async function runClaudeChecks() {
     return claudeRisk;
   });
 
-  await Promise.allSettled([claudeAiPromise, claudeCodePromise, crossPromise, riskPromise]);
+  const [prefs, pageEnv, _aiRes, _codeRes, meta, claudeRisk] = await Promise.allSettled([
+    runtimePrefsPromise,
+    pageEnvPromise,
+    claudeAiPromise,
+    claudeCodePromise,
+    crossPromise,
+    riskPromise
+  ]);
+  if (runId !== claudeCheckRunId) return;
+
+  const runtimePrefs = prefs.status === 'fulfilled' ? (prefs.value || {}) : {};
+  const env = pageEnv.status === 'fulfilled' ? (pageEnv.value || {}) : {};
+  const metaValue = meta.status === 'fulfilled' ? meta.value : null;
+  const riskValue = claudeRisk.status === 'fulfilled' ? claudeRisk.value : null;
+  const merged = normalizePopupIpMeta(riskValue, null, metaValue?.ip || claudeTraceIp);
+  const currentTimezone = env?.timezone && !env.error ? env.timezone : (runtimePrefs.timezone === 'ip' ? runtimePrefs.ipTimezone : runtimePrefs.timezone);
+  const currentLanguage = env?.language && !env.error ? env.language : (runtimePrefs.language === 'ip' ? runtimePrefs.ipLanguage : runtimePrefs.language);
+  const targetTimezone = merged.timezone || '--';
+  const targetLanguage = (merged.countryCode || merged.timezone)
+    ? inferLanguageFromIp(merged.countryCode || '', merged.timezone || '')
+    : '--';
+
+  renderClaudeAlignment(
+    {
+      current: currentTimezone || '',
+      target: targetTimezone,
+      ok: !!currentTimezone && !!targetTimezone && normalizeCompareValue(currentTimezone) === normalizeCompareValue(targetTimezone)
+    },
+    {
+      current: currentLanguage || '',
+      target: targetLanguage,
+      ok: !!currentLanguage && !!targetLanguage && languageMatches(currentLanguage, targetLanguage)
+    }
+  );
 }
 
 // --- 安全检测标签完整列表 ---
@@ -1147,8 +1369,8 @@ async function runAuditChecks() {
 }
 
 // --- 实时同步核心逻辑 ( chrome.storage.onChanged ) ---
-const POPUP_FIELDS = ['proxyMode', 'proxyProfiles', 'activeProfileId', 'theme', 'timezone', 'language', 'ipTimezone', 'uiLang', 'miniSubUrl', 'miniSubscriptions', 'miniActiveNode', 'miniNodeDelays', 'miniNodeDelayAt'];
-const RUNTIME_FIELDS = ['ipLanguage', 'ipCountryCode', 'ipCountry', 'ipCity', 'ipTimezone', 'currentExitIp', 'lastContextRefreshAt', 'lastExitProbeAt'];
+const POPUP_FIELDS = ['proxyMode', 'proxyProfiles', 'activeProfileId', 'theme', 'timezone', 'language', 'ipTimezone', 'uiLang', 'miniSubUrl', 'miniSubscriptions', 'miniActiveNode', 'miniNodeDelays', 'miniNodeDelayAt', 'profileLatencyMap'];
+const RUNTIME_FIELDS = ['ipLanguage', 'ipCountryCode', 'ipCountry', 'ipCity', 'ipTimezone', 'currentExitIp', 'lastContextRefreshAt', 'lastExitProbeAt', 'ipAlertState'];
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   if (POPUP_FIELDS.some((field) => field in changes)) {
@@ -1158,8 +1380,8 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (RUNTIME_FIELDS.some((field) => field in changes)) {
     chrome.storage.local.get(['currentExitIp', 'ipCountry', 'ipCity', 'ipTimezone', 'ipLanguage', 'lastContextRefreshAt'], (res) => {
       applyHeroSnapshot(res || {});
-      refreshHeroRouteSummary(res || {}, { preferCache: true }).catch(() => {});
     });
+    if (changes.ipAlertState) renderIpAlertBanner(changes.ipAlertState.newValue || null);
   }
 });
 
@@ -1189,13 +1411,20 @@ document.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('offline', handleOffline);
   window.addEventListener('online', handleOnline);
   if (!navigator.onLine) handleOffline();
+  if (SYSTEM_THEME_MEDIA) {
+    const syncAutoTheme = async () => {
+      const prefs = await chrome.storage.local.get(['theme']);
+      if ((prefs.theme || 'dark') === 'auto') updateTheme('auto');
+    };
+    if (typeof SYSTEM_THEME_MEDIA.addEventListener === 'function') SYSTEM_THEME_MEDIA.addEventListener('change', syncAutoTheme);
+    else if (typeof SYSTEM_THEME_MEDIA.addListener === 'function') SYSTEM_THEME_MEDIA.addListener(syncAutoTheme);
+  }
 
   $$('.nav-item').forEach(btn => {
     btn.addEventListener('click', () => {
       const tab = btn.dataset.tab;
       $$('.nav-item').forEach(b => b.classList.toggle('active', b === btn));
       $$('.view').forEach(v => v.classList.toggle('active', v.id === `tab-${tab}`));
-      if (tab === 'claude') runClaudeChecks();
     });
   });
 
@@ -1209,6 +1438,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const patch = { activeProfileId: nextId };
     if (MINI_PROXY_ENABLED && nextId === MINI_PROFILE_ID && !['manual', 'auto'].includes(mode)) patch.proxyMode = 'manual';
     await chrome.storage.local.set(patch);
+    setTimeout(() => {
+      sendRuntimeMessage({ action: 'measureActiveProfileLatency', force: true, reason: 'switch' }).catch(() => {});
+    }, 1200);
   };
   $('#tzSelect').onchange = e => chrome.storage.local.set({ timezone: e.target.value });
   $('#langSelect').onchange = e => chrome.storage.local.set({ language: e.target.value });
@@ -1217,17 +1449,33 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   $('#themeToggle').onclick = () => {
     chrome.storage.local.get(['theme'], r => {
-      const next = r.theme === 'light' ? 'dark' : 'light';
+      const next = getNextTheme(r.theme || 'dark');
       chrome.storage.local.set({ theme: next });
     });
   };
   $('#headerReport').onclick = () => openLinkedReport();
   $('#headerSettings').onclick = () => chrome.runtime.openOptionsPage();
+  $('#heroRefreshBtn').onclick = async () => {
+    const btn = $('#heroRefreshBtn');
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      await forceRefreshExitHero();
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '↻';
+    }
+  };
+  $('#ipAlertDismiss').onclick = async () => {
+    await sendRuntimeMessage({ action: 'ackIpAlert' }).catch(() => {});
+    renderIpAlertBanner(null);
+  };
   $('#quickScanBtn').onclick = () => {
     const btn = $$('.nav-item')[3]; // Auditor tab
     btn.click();
     runAuditChecks();
   };
+  $('#runClaudeBtn').onclick = () => runClaudeChecks();
   $('#runTraceBtn').onclick = () => runTraceChecks();
   $('#runConnectivityBtn').onclick = () => runConnectivityChecks();
   $('#runAuditBtn').onclick = () => runAuditChecks();

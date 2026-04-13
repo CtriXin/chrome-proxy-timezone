@@ -3,21 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <title>Atlas 代理设置</title>
+  <script src="theme-boot.js"></script>
   <link rel="stylesheet" href="options.css">
 </head>
-<body class="dark">
+<body>
   <div class="layout">
     <aside class="sidebar">
       <div class="sidebar-header">
-        <span class="logo">◈ Atlas Proxy</span>
-        <span class="sub">设置</span>
+        <span class="logo">◈ <span data-i18n="appName">Atlas Proxy</span></span>
+        <span class="sub" data-i18n="navOptions">Settings</span>
       </div>
       <nav class="sidebar-nav">
         <div class="nav-group-title" data-i18n="tabQuick">PROXIES</div>
         <div id="profileList" class="profile-list"></div>
         <button id="newProfileBtn" class="btn-new-node" data-i18n="btnNewProfile">+ Add Profile</button>
         <div class="nav-divider"></div>
-        <div id="systemGroupTitle" class="nav-group-title">系统</div>
+        <div id="systemGroupTitle" class="nav-group-title" data-i18n="navSystem">SYSTEM</div>
         <button class="nav-menu-item active" data-section="section-node">
           <span class="icon">🔒</span> <span data-i18n="labelProfileInfo">Node Detail</span>
         </button>
@@ -25,19 +26,19 @@
           <span class="icon">🔀</span> <span data-i18n="statusAuto">Routing Rules</span>
         </button>
         <button class="nav-menu-item" data-section="section-general">
-          <span class="icon">🌍</span> <span data-i18n="labelGlobalSettings">通用设置</span>
+          <span class="icon">🌍</span> <span data-i18n="labelGlobalSettings">General Settings</span>
         </button>
         <button class="nav-menu-item" data-section="section-mini">
-          <span class="icon">🧩</span> <span>Atlas Mini</span>
+          <span class="icon">🧩</span> <span data-i18n="navMini">Atlas Mini</span>
         </button>
         <button class="nav-menu-item" data-section="section-backup">
-          <span class="icon">💾</span> <span id="backupMenuText">导入 / 导出</span>
+          <span class="icon">💾</span> <span id="backupMenuText" data-i18n="navBackup">Backup & Sync</span>
         </button>
         <button class="nav-menu-item" data-section="section-diagnostics">
-          <span class="icon">📊</span> <span id="diagMenuText">诊断中心</span>
+          <span class="icon">📊</span> <span id="diagMenuText" data-i18n="navDiagnostics">Diagnostics</span>
         </button>
         <button class="nav-menu-item" data-section="section-routinglab">
-          <span class="icon">🧭</span> <span id="routingMenuText">分流实验室</span>
+          <span class="icon">🧭</span> <span id="routingMenuText" data-i18n="navRouting">Routing Lab</span>
         </button>
       </nav>
     </aside>
@@ -86,6 +87,7 @@
               <button id="updateProfileBtn" class="btn-ghost" data-i18n="btnUpdate">Update</button>
               <button id="delProfileBtn" class="btn-ghost danger" data-i18n="btnDelete">Delete</button>
             </div>
+            <div id="profileLatencyMeta" class="profile-latency-meta">--</div>
           </div>
         </section>
 
@@ -99,19 +101,21 @@
                 <button id="ruleSourceModeBtn" class="btn-ghost" type="button">源码模式</button>
               </div>
               <div class="rule-actions">
-                <button id="loadClaudePresetBtn" class="btn-ghost" type="button">导入 Claude 预设</button>
+                <select id="rulePresetSelect" class="rule-preset-select"></select>
+                <button id="loadRulePresetBtn" class="btn-ghost" type="button">导入预设</button>
                 <button id="copyRuleSourceBtn" class="btn-ghost" type="button">复制源码</button>
               </div>
             </div>
+            <p id="rulePresetHint" class="mini-muted rule-preset-hint">--</p>
 
             <div id="ruleVisualPanel">
               <div id="ruleList" class="rule-list"></div>
               <div class="rule-add-grid">
                 <select id="ruleType">
-                  <option value="suffix">域名后缀</option>
-                  <option value="domain">精确域名</option>
-                  <option value="keyword">关键字</option>
-                  <option value="wildcard">通配符</option>
+                  <option value="suffix" data-i18n="ruleSuffix">域名后缀</option>
+                  <option value="domain" data-i18n="ruleDomain">精确域名</option>
+                  <option value="keyword" data-i18n="ruleKeyword">关键字</option>
+                  <option value="wildcard" data-i18n="ruleWildcard">通配符</option>
                 </select>
                 <input type="text" id="rulePattern" placeholder="anthropic.com / *.google.com / datadog">
                 <select id="ruleProfile"></select>
@@ -121,11 +125,11 @@
 
             <div id="ruleSourcePanel" class="rule-source-panel" style="display:none">
               <textarea id="ruleSource" class="rule-source-textarea" spellcheck="false"></textarea>
-              <p class="mini-muted" style="margin-top:10px">
-                支持两种格式：1) SwitchyOmega 风格：<code>*.anthropic.com +节点名</code>；2) 显式格式：<code>DOMAIN-SUFFIX,anthropic.com +节点名</code> / <code>DOMAIN,api.anthropic.com +节点名</code> / <code>DOMAIN-KEYWORD,datadog +节点名</code>。
+              <p class="mini-muted" style="margin-top:10px" data-i18n="ruleSourceHint">
+                Supports SwitchyOmega and explicit formats (DOMAIN-SUFFIX, DOMAIN, etc).
               </p>
               <div class="rule-actions" style="margin-top:12px">
-                <button id="applyRuleSourceBtn" class="btn-ghost" type="button">从源码导入</button>
+                <button id="applyRuleSourceBtn" class="btn-ghost" type="button" data-i18n="btnImportSource">从源码导入</button>
               </div>
             </div>
           </div>
@@ -186,32 +190,81 @@
               </select>
             </div>
           </div>
+          <div class="card" style="margin-top:20px">
+            <div class="field">
+              <label id="ipAlertConfigTitle">IP 突变告警</label>
+              <label class="checkbox-row">
+                <input type="checkbox" id="ipAlertEnabled">
+                <span id="ipAlertConfigDesc">后台定时检测出口 IP，变化后用扩展角标提醒。</span>
+              </label>
+            </div>
+            <div class="grid-2">
+              <div class="field">
+                <label id="ipAlertIntervalLabel">检测间隔</label>
+                <select id="ipAlertInterval">
+                  <option value="3">3 分钟</option>
+                  <option value="5">5 分钟</option>
+                  <option value="10">10 分钟</option>
+                  <option value="15">15 分钟</option>
+                </select>
+              </div>
+              <div class="field">
+                <label id="ipAlertStatusLabel">当前状态</label>
+                <div id="ipAlertStatusText" class="mini-muted">--</div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:20px">
+            <div class="field">
+              <label id="apiConfigTitle">自定义 API / Key</label>
+              <div id="apiConfigDesc" class="mini-muted">可以填写你自己的 AbuseIPDB API Key，风险评分会优先走你的配额，减少默认公共接口压力。</div>
+            </div>
+            <div class="field">
+              <label id="abuseKeyLabel">AbuseIPDB API Key</label>
+              <input type="password" id="abuseIpDbKey" placeholder="abuseipdb key (optional)">
+            </div>
+            <div class="btn-row">
+              <button id="clearCustomApiBtn" class="btn-ghost" type="button">清空自定义配置</button>
+            </div>
+            <div id="apiGuide" class="api-guide mini-muted">
+              <div id="apiGuideTitle" class="api-guide-title">使用说明</div>
+              <ol class="api-guide-list">
+                <li id="apiGuideStep1">去 AbuseIPDB 注册或登录账号。</li>
+                <li id="apiGuideStep2">在账号页的 API Settings 里创建并复制 API Key。</li>
+                <li id="apiGuideStep3">粘贴到这里后保存并应用，popup 的风险评分会优先使用你的配额。</li>
+              </ol>
+              <div id="apiGuideLinkLine" style="margin-top:10px">
+                <span id="apiGuideLinkLabel">获取地址：</span>
+                <a href="https://www.abuseipdb.com/api" target="_blank" rel="noreferrer">abuseipdb.com/api</a>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section id="section-mini" class="config-section">
-          <h2>Atlas Mini</h2>
+          <h2 data-i18n="navMini">Atlas Mini</h2>
           <div class="card">
             <div class="mini-section-hero">
               <div>
-                <div class="mini-section-title">Atlas Mini 订阅与节点源</div>
-                <div class="mini-muted">这里就是 popup 里“未配置订阅”对应的网页端配置入口。</div>
+                <div class="mini-section-title" data-i18n="miniTitle">Atlas Mini Subscriptions</div>
+                <div class="mini-muted" data-i18n="miniSubtitle">Configure node sources for Atlas Mini popup here.</div>
               </div>
-              <div class="mini-section-badge">popup 配置入口</div>
+              <div class="mini-section-badge" data-i18n="miniBadge">POPUP ENTRY</div>
             </div>
             <div class="field">
-              <label>当前订阅</label>
+              <label data-i18n="labelCurrentSub">Current Subscription</label>
               <select id="miniSubscriptionSelect"></select>
             </div>
             <div class="grid-2">
-              <div class="field"><label>订阅名称</label><input type="text" id="miniSubName" placeholder="例如：CF 官方优选"></div>
-              <div class="field"><label>User-Agent</label><input type="text" id="miniSubUa" placeholder="可选"></div>
+              <div class="field"><label data-i18n="labelSubName">Subscription Name</label><input type="text" id="miniSubName" placeholder="e.g. My Proxy Group"></div>
+              <div class="field"><label data-i18n="labelSubUa">User-Agent</label><input type="text" id="miniSubUa" placeholder="Optional"></div>
             </div>
-            <div class="field"><label>订阅 URL</label><input type="text" id="miniSubUrlInput" placeholder="https://..."></div>
+            <div class="field"><label data-i18n="labelSubUrl">Subscription URL</label><input type="text" id="miniSubUrlInput" placeholder="https://..."></div>
             <div class="btn-row mini-sub-actions">
-              <button id="miniSubNewBtn" class="btn-ghost" type="button">新建空白</button>
-              <button id="miniSubSaveBtn" class="btn-ghost" type="button">保存订阅</button>
-              <button id="miniSubDeleteBtn" class="btn-ghost danger" type="button">删除订阅</button>
-              <button id="miniSubSyncBtn" class="btn-primary" type="button">同步到 Atlas Mini</button>
+              <button id="miniSubNewBtn" class="btn-ghost" type="button" data-i18n="btnNewSub">New</button>
+              <button id="miniSubSaveBtn" class="btn-ghost" type="button" data-i18n="btnSaveSub">Save</button>
+              <button id="miniSubDeleteBtn" class="btn-ghost danger" type="button" data-i18n="btnDeleteSub">Delete</button>
+              <button id="miniSubSyncBtn" class="btn-primary" type="button" data-i18n="btnSyncMini">Sync to Atlas Mini</button>
             </div>
             <div id="miniSubStatus" class="mini-muted mini-sub-status">--</div>
           </div>

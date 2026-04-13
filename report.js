@@ -1,6 +1,7 @@
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => document.querySelectorAll(s);
 const DEFAULT_API_BASE = 'https://proxy-api.evilsngx.workers.dev';
+const SYSTEM_THEME_MEDIA = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 let currentUiLang = 'zh';
 let appState = {
   apiBase: DEFAULT_API_BASE,
@@ -42,12 +43,12 @@ const TEXT = {
     language: '建议语言',
     country: '国家/地区',
     city: '城市',
-    trustScore: 'Trust Score',
-    isp: 'ISP / Org',
+    trustScore: '信用评分',
+    isp: '服务商 / 组织',
     asn: 'ASN',
-    reverseDns: 'Reverse DNS',
-    hostPtr: 'Host (PTR)',
-    fakeIp: 'Fake IP',
+    reverseDns: '反向 DNS',
+    hostPtr: '主机检测 (PTR)',
+    fakeIp: '假 IP',
     chinaDns: '中国 DNS',
     dnsResolver: 'DNS 解析器',
     dnsStatus: 'DNS 状态',
@@ -208,6 +209,22 @@ function t(key) {
   return TEXT[currentUiLang][key] || key;
 }
 
+function resolveTheme(theme) {
+  if (theme === 'auto') return SYSTEM_THEME_MEDIA?.matches ? 'dark' : 'light';
+  return theme === 'light' ? 'light' : 'dark';
+}
+
+function getThemeIcon(theme) {
+  if (theme === 'auto') return '◐';
+  return theme === 'light' ? '☀️' : '🌙';
+}
+
+function getNextTheme(theme) {
+  if (theme === 'dark') return 'auto';
+  if (theme === 'auto') return 'light';
+  return 'dark';
+}
+
 function row(label, value, cls = '') {
   return `<div class="row"><div class="label">${safeText(label)}</div><div class="value ${cls}">${safeText(value)}</div></div>`;
 }
@@ -323,8 +340,15 @@ function mergeRisk(primary = {}, cross = null, fallbackIp = '') {
 }
 
 function setTheme(theme) {
-  document.body.className = theme === 'light' ? 'light' : 'dark';
-  $('#themeToggle').innerText = theme === 'light' ? '🌙' : '☀️';
+  const resolved = resolveTheme(theme);
+  document.body.className = resolved;
+  document.documentElement.classList.remove('light', 'dark');
+  document.documentElement.classList.add(resolved);
+  try {
+    localStorage.setItem('atlas_theme_pref', theme);
+    localStorage.setItem('atlas_theme', resolved);
+  } catch (error) {}
+  $('#themeToggle').innerText = getThemeIcon(theme);
 }
 
 function setBusy(btn, busy, text) {
@@ -340,6 +364,7 @@ function setBusy(btn, busy, text) {
 }
 
 function renderStaticText() {
+  if ($('#logoEyebrow')) $('#logoEyebrow').innerText = (t('appName') || 'Atlas Proxy').toUpperCase();
   $('#reportTitle').innerText = t('title');
   $('#reportSubtitle').innerText = t('subtitle');
   $('#overviewLabel').innerText = t('currentExitIp');
@@ -661,7 +686,8 @@ async function init() {
 
   $('#uiLangToggle').onclick = () => chrome.storage.local.set({ uiLang: currentUiLang === 'zh' ? 'en' : 'zh' });
   $('#themeToggle').onclick = async () => {
-    const next = document.body.classList.contains('light') ? 'dark' : 'light';
+    const prefs = await chrome.storage.local.get(['theme']);
+    const next = getNextTheme(prefs.theme || 'dark');
     chrome.storage.local.set({ theme: next });
   };
   $('#openOptionsBtn').onclick = () => chrome.runtime.openOptionsPage();
@@ -686,6 +712,15 @@ async function init() {
       run('full').catch(() => {});
     }
   });
+
+  if (SYSTEM_THEME_MEDIA) {
+    const syncAutoTheme = async () => {
+      const prefs = await chrome.storage.local.get(['theme']);
+      if ((prefs.theme || 'dark') === 'auto') setTheme('auto');
+    };
+    if (typeof SYSTEM_THEME_MEDIA.addEventListener === 'function') SYSTEM_THEME_MEDIA.addEventListener('change', syncAutoTheme);
+    else if (typeof SYSTEM_THEME_MEDIA.addListener === 'function') SYSTEM_THEME_MEDIA.addListener(syncAutoTheme);
+  }
 }
 
 document.addEventListener('DOMContentLoaded', init);

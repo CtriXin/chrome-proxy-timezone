@@ -98,7 +98,7 @@ const DIAG_TEXT = {
     overviewSnapshot: '来自当前快照',
     overviewReachable: '出口探测正常',
     overviewMismatch: '出口与当前快照不一致',
-    focusTrust: 'Trust Score',
+    focusTrust: '信用评分',
     focusClaude: 'Claude 可达性',
     focusDns: 'DNS 泄露',
     focusWebrtc: 'WebRTC 泄露',
@@ -120,7 +120,7 @@ const DIAG_TEXT = {
     crossGood: '主数据与外部源高度一致',
     crossWarn: '主数据与外部源部分不一致',
     crossBad: '主数据与外部源差异明显',
-    crossSourcePrimary: 'Primary',
+    crossSourcePrimary: '主数据源',
     crossSourceAlt1: 'ipapi.is',
     crossSourceAlt2: 'api.ip.sb',
     crossUnavailable: '外部源暂不可用',
@@ -132,15 +132,15 @@ const DIAG_TEXT = {
     scoreGoodDesc: '整体可用，但仍建议结合站点特征复测。',
     scoreWatchDesc: '存在一定代理/机房信号，建议谨慎使用。',
     scoreRiskyDesc: '风险特征明显，容易触发站点风控。',
-    trustTypeResidential: 'Residential-likely',
-    trustTypeDatacenter: 'Datacenter',
-    trustTypeProxy: 'Proxy-likely',
-    trustTypeMobile: 'Mobile',
+    trustTypeResidential: '家庭住宅 IP',
+    trustTypeDatacenter: '数据中心',
+    trustTypeProxy: '代理节点',
+    trustTypeMobile: '移动网络',
     recommendation: '结论与建议',
     targetTab: '检测目标页面',
     refreshTabs: '刷新标签页',
     noTabSelected: '未选择页面',
-    targetHint: '这里选中的页面，就是时区 / 语言 / WebRTC / WebGL 实际检测对象。',
+    targetHint: '⚠️ 选中的页面将作为：时区 / 语言 / WebRTC / WebGL 实际检测环境。<br><b>当前选择：</b>',
     targetFromPopup: '已默认锁定 popup 打开时的页面',
     claudeHint: '这里是出口级连通性探测，与所选页面无关；所选页面只影响时区 / 语言 / WebRTC / WebGL。',
     claudeWebLabel: 'Claude 公共入口',
@@ -164,10 +164,10 @@ const DIAG_TEXT = {
     city: '城市',
     timezone: '时区',
     language: '语言',
-    trustScore: 'Trust Score',
-    isp: 'ISP / Org',
+    trustScore: '信用评分',
+    isp: '服务商 / 组织',
     asn: 'ASN',
-    reverseDns: 'Reverse DNS',
+    reverseDns: '反向 DNS',
     dnsResolver: 'DNS 出口',
     dnsStatus: 'DNS 状态',
     webrtcPrivate: 'WebRTC 私网 IP',
@@ -175,11 +175,21 @@ const DIAG_TEXT = {
     webrtcStatus: 'WebRTC 状态',
     browserTimezone: '页面时区',
     browserLanguage: '页面语言',
+    pageLanguages: '页面语言列表',
+    userAgent: 'User-Agent',
     targetPage: '目标页',
     webgl: 'WebGL',
     canvas: 'Canvas 指纹',
+    screen: '屏幕',
+    viewport: '视口',
+    hardware: '硬件信息',
+    envConsistency: '环境一致性',
+    cookieEnabled: 'Cookie',
+    doNotTrack: 'Do Not Track',
+    webdriver: 'WebDriver',
+    touchPoints: '触控点',
     platform: '系统 / 浏览器',
-    networkInfo: 'Network Info',
+    networkInfo: '网络信息',
     claudeWeb: 'Claude Web',
     anthropicApi: 'Anthropic API',
     cloudflare: 'Cloudflare',
@@ -198,13 +208,13 @@ const DIAG_TEXT = {
     claudeWarning: 'Claude 有探测项失败',
     noIssue: '当前没有发现明显异常。',
     routingTitle: '分流实验室',
-    routingSubtitle: '做网站连通性卡片和分流矩阵；只有带 trace/echo 的目标才会显示 Verified。',
+    routingSubtitle: '做网站连通性卡片和分流实验室矩阵；只有带 trace/echo 的目标才会显示已验证。',
     routingRun: '执行分流测试',
     routingRunBusy: '分流测试中...',
     loadingHint: '正在探测多个目标，请稍候...',
     routingCardsTitle: '网络连通性',
     routingTableTitle: '网站分流矩阵',
-    routingTableHint: 'Verified 表示目标提供 trace/echo 类证据；Inferred 表示依据规则命中与连通性推断，不伪造精确 IP。',
+    routingTableHint: '已验证 (Verified) 表示目标提供 trace/echo 类证据；推断 (Inferred) 表示依据规则命中与连通性推断。',
     routingCategoryLabel: '分类筛选',
     routingOnlyAbnormal: '只看异常分流',
     routingColSite: '站点',
@@ -216,12 +226,12 @@ const DIAG_TEXT = {
     routingColRoute: '路由依据',
     routingColNode: '规则节点',
     routingColConfidence: '可信度',
-    verified: 'Verified',
-    inferred: 'Inferred',
-    routeDirect: 'Direct',
-    routeManual: 'Manual',
-    routeSystem: 'System',
-    routeAutoMiss: 'Auto (未命中规则)',
+    verified: '已验证',
+    inferred: '推断',
+    routeDirect: '直连',
+    routeManual: '手动',
+    routeSystem: '系统',
+    routeAutoMiss: '自动 (未命中规则)',
     routeViaProfile: '经节点',
     routeMatchedRule: '命中规则',
     routeNoNode: '无特定节点',
@@ -230,21 +240,21 @@ const DIAG_TEXT = {
     district: '区域细分',
     zip: '邮编',
     countryCode: '国家代码',
-    hostPtr: 'Host PTR',
+    hostPtr: '反向解析 (PTR)',
     fakeIp: '虚假 IP',
     chinaDns: '中国 DNS',
     mobile: '移动网络',
     hosting: '机房 / 托管',
     proxyFlag: '代理特征',
     vpnFlag: 'VPN 特征',
-    relayFlag: 'Relay',
-    attackerFlag: 'Attacker',
-    abuserFlag: 'Abuser',
-    bogonFlag: 'Bogon',
-    spamFlag: 'Spam',
-    batchFlag: 'Batch',
-    scannerFlag: 'Scanner',
-    botnetFlag: 'Botnet',
+    relayFlag: '中继特征',
+    attackerFlag: '攻击者记录',
+    abuserFlag: '滥用记录',
+    bogonFlag: '保留 IP',
+    spamFlag: '邮件黑名单',
+    batchFlag: '批量操作特征',
+    scannerFlag: '扫描器特征',
+    botnetFlag: '僵尸网络特征',
     dataCenter: '数据中心',
     torFlag: 'Tor 网络',
     anonymousFlag: '匿名网络',
@@ -367,9 +377,19 @@ const DIAG_TEXT = {
     webrtcStatus: 'WebRTC Status',
     browserTimezone: 'Page Timezone',
     browserLanguage: 'Page Language',
+    pageLanguages: 'Page Languages',
+    userAgent: 'User-Agent',
     targetPage: 'Target Page',
     webgl: 'WebGL',
     canvas: 'Canvas Hash',
+    screen: 'Screen',
+    viewport: 'Viewport',
+    hardware: 'Hardware',
+    envConsistency: 'Environment Consistency',
+    cookieEnabled: 'Cookie',
+    doNotTrack: 'Do Not Track',
+    webdriver: 'WebDriver',
+    touchPoints: 'Touch Points',
     platform: 'OS / Browser',
     networkInfo: 'Network Info',
     claudeWeb: 'Claude Web',
@@ -953,10 +973,11 @@ function buildDiagFocusCards({
   const trustMeta = getTrustScoreMeta(risk?.trust_score);
   const timezoneAligned = !!snapshot?.ipTimezone && pageEnv?.timezone === snapshot.ipTimezone;
   const languageAligned = !!snapshot?.ipLanguage && String(pageEnv?.language || '').startsWith(String(snapshot.ipLanguage || ''));
-  const envTone = timezoneAligned && languageAligned ? 'good' : ((timezoneAligned || languageAligned) ? 'warn' : 'bad');
-  const envCopy = timezoneAligned && languageAligned
+  const viewportSafe = Number(pageEnv?.screen?.width || 0) >= Number(pageEnv?.viewport?.innerWidth || 0);
+  const envTone = timezoneAligned && languageAligned && viewportSafe ? 'good' : ((timezoneAligned || languageAligned || viewportSafe) ? 'warn' : 'bad');
+  const envCopy = timezoneAligned && languageAligned && viewportSafe
     ? diagText('focusHealthy')
-    : (timezoneAligned || languageAligned ? diagText('focusAttention') : diagText('focusRisk'));
+    : (timezoneAligned || languageAligned || viewportSafe ? diagText('focusAttention') : diagText('focusRisk'));
 
   return [
     {
@@ -990,11 +1011,46 @@ function buildDiagFocusCards({
     {
       label: diagText('focusEnv'),
       value: envCopy,
-      copy: `${diagText('timezone')}: ${pageEnv?.timezone || '--'}`,
-      subcopy: `${diagText('language')}: ${pageEnv?.language || '--'}`,
+      copy: `${diagText('timezone')}: ${pageEnv?.timezone || '--'} · ${diagText('language')}: ${pageEnv?.language || '--'}`,
+      subcopy: `${diagText('screen')}: ${formatScreenValue(pageEnv)} · ${diagText('viewport')}: ${formatViewportValue(pageEnv)}`,
       tone: envTone
     }
   ];
+}
+
+function formatScreenValue(pageEnv = {}) {
+  const width = Number(pageEnv?.screen?.width || 0);
+  const height = Number(pageEnv?.screen?.height || 0);
+  const dpr = Number(pageEnv?.screen?.dpr || 1);
+  if (!width || !height) return '--';
+  return `${width}x${height} @${dpr}x`;
+}
+
+function formatViewportValue(pageEnv = {}) {
+  const width = Number(pageEnv?.viewport?.innerWidth || 0);
+  const height = Number(pageEnv?.viewport?.innerHeight || 0);
+  if (!width || !height) return '--';
+  return `${width}x${height}`;
+}
+
+function formatHardwareValue(pageEnv = {}) {
+  const parts = [];
+  if (pageEnv?.hardwareConcurrency) parts.push(`${pageEnv.hardwareConcurrency} CPU`);
+  if (pageEnv?.deviceMemory) parts.push(`${pageEnv.deviceMemory} GB`);
+  if (Number.isFinite(Number(pageEnv?.maxTouchPoints))) parts.push(`${pageEnv.maxTouchPoints} touch`);
+  return parts.join(' / ') || '--';
+}
+
+function formatEnvConsistency(pageEnv = {}, snapshot = {}) {
+  const checks = [];
+  if (snapshot?.ipTimezone) checks.push(pageEnv?.timezone === snapshot.ipTimezone);
+  if (snapshot?.ipLanguage) checks.push(String(pageEnv?.language || '').startsWith(String(snapshot.ipLanguage || '')));
+  if (pageEnv?.screen?.width) checks.push(Number(pageEnv.screen.width) >= Number(pageEnv?.viewport?.innerWidth || 0));
+  if (!checks.length) return '--';
+  const passed = checks.filter(Boolean).length;
+  if (passed === checks.length) return diagText('focusHealthy');
+  if (passed > 0) return diagText('focusAttention');
+  return diagText('focusRisk');
 }
 
 function renderIpModal() {
@@ -1555,11 +1611,32 @@ function collectLocalDevice() {
 }
 
 async function collectPageEnvironment() {
+  const envProfile = await diagSendToActiveTab({ action: 'pageProbe', probeType: 'envProfile' });
+  if (envProfile && !envProfile.error) {
+    const webgl = envProfile.webgl || {};
+    return {
+      ...envProfile,
+      webgl: webgl.status === 'ok'
+        ? webgl.value
+        : (webgl.status === 'unsupported' ? diagText('unsupported') : diagText('probeFailed'))
+    };
+  }
   const pageEnv = await diagSendToActiveTab({ action: 'pageProbe', probeType: 'pageEnv' });
   const webgl = await diagSendToActiveTab({ action: 'pageProbe', probeType: 'webgl' });
   return {
     timezone: pageEnv?.timezone || (pageEnv?.error === 'unsupported_tab' ? diagText('needWebPage') : diagText('probeFailed')),
     language: pageEnv?.language || (pageEnv?.error === 'unsupported_tab' ? diagText('needWebPage') : diagText('probeFailed')),
+    languages: pageEnv?.languages || [],
+    userAgent: '',
+    screen: null,
+    viewport: null,
+    hardwareConcurrency: null,
+    deviceMemory: null,
+    maxTouchPoints: 0,
+    cookieEnabled: null,
+    doNotTrack: '',
+    webdriver: false,
+    canvasHash: '',
     webgl: webgl?.status === 'ok' ? webgl.value : (webgl?.error === 'unsupported_tab' ? diagText('needWebPage') : (webgl?.status === 'unsupported' ? diagText('unsupported') : diagText('probeFailed')))
   };
 }
@@ -1599,9 +1676,8 @@ function renderTabOptions() {
   select.value = String(diagnosticsState.selectedTabId || '');
   const activeTab = diagnosticsState.availableTabs.find((tab) => tab.id === diagnosticsState.selectedTabId);
   if (hint) {
-    hint.innerText = activeTab
-      ? `${diagText('targetHint')} ${diagText('targetFromPopup')}: ${activeTab.url || ''}`
-      : diagText('needWebPage');
+    const activeTitle = activeTab ? formatTabOption(activeTab) : diagText('noTabSelected');
+    hint.innerHTML = `${diagText('targetHint')} <b>${escapeText(activeTitle)}</b>`;
   }
 }
 
@@ -1698,12 +1774,22 @@ function renderSnapshotPlaceholders(targetPageUrl) {
     diagRow(diagText('targetPage'), targetPageUrl || '--'),
     diagRow(diagText('browserTimezone'), diagText('snapshotOnly')),
     diagRow(diagText('browserLanguage'), diagText('snapshotOnly')),
+    diagRow(diagText('pageLanguages'), diagText('snapshotOnly')),
+    diagRow(diagText('userAgent'), diagText('snapshotOnly')),
+    diagRow(diagText('screen'), diagText('snapshotOnly')),
+    diagRow(diagText('viewport'), diagText('snapshotOnly')),
     diagRow(diagText('webrtcStatus'), diagText('snapshotOnly')),
-    diagRow(diagText('webgl'), diagText('snapshotOnly'))
+    diagRow(diagText('webgl'), diagText('snapshotOnly')),
+    diagRow(diagText('canvas'), diagText('snapshotOnly'))
   ].join(''));
   diagSetHtml('diagDeviceRows', [
     diagRow(diagText('platform'), diagText('snapshotOnly')),
+    diagRow(diagText('hardware'), diagText('snapshotOnly')),
     diagRow(diagText('networkInfo'), diagText('snapshotOnly')),
+    diagRow(diagText('cookieEnabled'), diagText('snapshotOnly')),
+    diagRow(diagText('doNotTrack'), diagText('snapshotOnly')),
+    diagRow(diagText('webdriver'), diagText('snapshotOnly')),
+    diagRow(diagText('envConsistency'), diagText('snapshotOnly')),
     diagRow(diagText('canvas'), diagText('snapshotOnly'))
   ].join(''));
   diagSetHtml('diagRecommendRows', `<div class="diag-tip">${escapeText(diagText('snapshotOnly'))}</div>`);
@@ -1883,15 +1969,25 @@ async function renderDiagnostics(mode = 'full') {
     diagRow(diagText('targetPage'), probeTab?.url || diagnosticsState.selectedTabUrl || '--'),
     diagRow(diagText('browserTimezone'), pageEnv.timezone),
     diagRow(diagText('browserLanguage'), pageEnv.language),
+    diagRow(diagText('pageLanguages'), Array.isArray(pageEnv.languages) && pageEnv.languages.length ? pageEnv.languages.join(', ') : '--'),
+    diagRow(diagText('userAgent'), pageEnv.userAgent || '--'),
+    diagRow(diagText('screen'), formatScreenValue(pageEnv)),
+    diagRow(diagText('viewport'), formatViewportValue(pageEnv)),
     diagRow(diagText('webrtcPrivate'), webrtcRes?.error === 'unsupported_tab' ? diagText('needWebPage') : (webrtcRes?.privateIps?.join(', ') || diagText('notDetected')), webrtcRes?.privateIps?.length ? 'warn mono' : 'success mono'),
     diagRow(diagText('webrtcPublic'), webrtcRes?.error === 'unsupported_tab' ? diagText('needWebPage') : (webrtcRes?.publicIps?.join(', ') || diagText('notDetected')), webrtcRes?.publicIps?.length ? 'mono' : 'success mono'),
     diagRow(diagText('webrtcStatus'), webrtcEval.text, webrtcEval.safe ? 'success' : 'warn'),
-    diagRow(diagText('webgl'), pageEnv.webgl)
+    diagRow(diagText('webgl'), pageEnv.webgl),
+    diagRow(diagText('canvas'), pageEnv.canvasHash || '--', 'mono')
   ].join(''));
 
   diagSetHtml('diagDeviceRows', [
     diagRow(diagText('platform'), localDevice.platform),
+    diagRow(diagText('hardware'), formatHardwareValue(pageEnv)),
     diagRow(diagText('networkInfo'), localDevice.network),
+    diagRow(diagText('cookieEnabled'), pageEnv.cookieEnabled == null ? '--' : yesNoText(pageEnv.cookieEnabled)),
+    diagRow(diagText('doNotTrack'), pageEnv.doNotTrack || '--'),
+    diagRow(diagText('webdriver'), yesNoText(!!pageEnv.webdriver)),
+    diagRow(diagText('envConsistency'), formatEnvConsistency(pageEnv, snapshot)),
     diagRow(diagText('canvas'), localDevice.canvas, 'mono')
   ].join(''));
 
@@ -1920,10 +2016,10 @@ function renderDiagnosticsStatic() {
   diagSetText('runDiagFullBtn', diagText('refreshFull'));
   diagSetText('diagTargetLabel', diagText('targetTab'));
   diagSetText('diagRefreshTabsBtn', diagText('refreshTabs'));
-  diagSetText('diagTargetHint', diagText('targetHint'));
+  diagSetHtml('diagTargetHint', diagText('targetHint'));
   diagSetText('diagOverviewTitle', diagText('overview'));
   diagSetText('diagClaudeTitle', diagText('claude'));
-  diagSetText('diagClaudeHint', diagText('claudeHint'));
+  diagSetHtml('diagClaudeHint', diagText('claudeHint'));
   diagSetText('diagIpDetailTitle', diagText('ipDetail'));
   diagSetText('diagSecurityTitle', diagText('securityTitle'));
   diagSetText('diagCrossTitle', diagText('crossTitle'));

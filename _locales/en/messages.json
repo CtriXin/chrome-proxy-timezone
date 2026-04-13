@@ -316,5 +316,29 @@
   },
   "notDetected": {
     "message": "Not Detected"
+  },
+  "ipAlertTitle": {
+    "message": "Exit IP changed"
+  },
+  "ipAlertDismiss": {
+    "message": "Dismiss"
+  },
+  "runClaudeCheck": {
+    "message": "Run Claude Checks"
+  },
+  "envAlignment": {
+    "message": "Environment Alignment"
+  },
+  "timezoneMatch": {
+    "message": "Timezone Match"
+  },
+  "languageMatch": {
+    "message": "Language Match"
+  },
+  "matched": {
+    "message": "Matched"
+  },
+  "mismatched": {
+    "message": "Mismatched"
   }
 }
