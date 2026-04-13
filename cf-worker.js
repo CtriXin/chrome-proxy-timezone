@@ -27,26 +27,50 @@ export default {
     if (path === "/api/risk") {
       const ip = params.get("ip") || request.headers.get("cf-connecting-ip");
       const [abuseRes, geoRes] = await Promise.all([
-        env.ABUSEIPDB_KEY 
+        env.ABUSEIPDB_KEY
           ? fetch(`https://api.abuseipdb.com/api/v2/check?ipAddress=${ip}`, {
               headers: { "Key": env.ABUSEIPDB_KEY, "Accept": "application/json" }
             }).then(r => r.json()).catch(() => ({}))
           : Promise.resolve({}),
-        fetch(`http://ip-api.com/json/${ip}?fields=status,country,city,timezone,isp,as,proxy,hosting`)
+        fetch(`http://ip-api.com/json/${ip}?fields=status,message,country,countryCode,region,regionName,city,timezone,isp,as,proxy,hosting,mobile,query`)
           .then(r => r.json()).catch(() => ({}))
       ]);
 
       const d = abuseRes.data || {};
+      const abuseScore = d.abuseConfidenceScore || 0;
+      const usageType = (d.usageType || '').toLowerCase();
+      const isDataCenter = usageType.includes('data center') || usageType.includes('hosting') || geoRes.hosting || false;
+      const isVpn = isDataCenter || d.isWhitelisted === false && abuseScore > 0;
+
       const result = {
         ip: ip,
-        trust_score: 100 - (d.abuseConfidenceScore || 0),
+        trust_score: 100 - abuseScore,
         country: d.countryName || geoRes.country || "Unknown",
         city: d.city || geoRes.city || "Unknown",
+        region: d.domain ? '' : (geoRes.regionName || ''),
         asn: d.asn || (geoRes.as ? parseInt(geoRes.as.split(' ')[0].replace('AS','')) : 0),
         asOrganization: d.isp || geoRes.isp || "Unknown",
-        is_proxy: geoRes.proxy || (d.abuseConfidenceScore > 0),
-        is_vpn: geoRes.hosting || d.usageType?.includes("Data Center") || false,
-        timezone: geoRes.timezone || "UTC"
+        timezone: geoRes.timezone || "UTC",
+        // 13 个安全标签
+        is_vpn: isVpn,
+        is_proxy: geoRes.proxy || (abuseScore > 25),
+        is_tor: usageType.includes('tor') || false,
+        is_datacenter: isDataCenter,
+        is_relay: false,
+        is_anonymous: isVpn || geoRes.proxy || false,
+        is_attacker: abuseScore > 25,
+        is_abuser: abuseScore > 0,
+        is_threats: abuseScore > 50,
+        is_bogon: !geoRes.countryCode || ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.'),
+        is_spam: abuseScore > 10,
+        is_batch: false,
+        is_scanner: usageType.includes('scanner') || abuseScore > 40,
+        is_botnet: usageType.includes('botnet') || abuseScore > 60,
+        // IP 附加信息
+        reverseDns: d.domain || null,
+        hostPtr: d.domain || null,
+        fakeIp: ip.startsWith('10.') || ip.startsWith('192.168.') || ip.startsWith('172.') || false,
+        chinaDns: null
       };
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

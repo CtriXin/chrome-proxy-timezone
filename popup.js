@@ -260,6 +260,22 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
   $('#headerSettings').onclick = () => chrome.runtime.openOptionsPage();
+  $('#quickScanBtn').onclick = () => {
+    const btn = $$('.nav-item')[3]; // Auditor tab
+    btn.click();
+  };
+  $('#checkChinaBtn').onclick = () => {
+    $('#cn-status').innerText = i18n('scanning');
+    chrome.runtime.sendMessage({ action: 'getChinaIp' }, res => {
+      if (res && res.ip) {
+        $('#cn-status').innerText = res.ip;
+        $('#cn-detail').innerText = `${res.pro || ''} ${res.city || ''} ${res.addr || ''}`.trim();
+      } else {
+        $('#cn-status').innerText = '--';
+        $('#cn-detail').innerText = 'Detection failed';
+      }
+    });
+  };
 });
 
 // --- Popup 关闭时清理 ---

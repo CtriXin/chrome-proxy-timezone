@@ -1,4 +1,4 @@
-const $ = (id) => document.getElementById(id) || document.querySelector(id);
+const $ = (id) => document.getElementById(id);
 const $$ = (s) => document.querySelectorAll(s);
 
 const TRANSLATIONS = {
@@ -27,9 +27,7 @@ let state = {
   rules: [], proxyBypass: '', timezone: '', language: '', ipTimezone: '', uiLang: 'zh'
 };
 
-function i18n(key) {
-  return TRANSLATIONS[state.uiLang][key] || key;
-}
+function i18n(key) { return TRANSLATIONS[state.uiLang][key] || key; }
 
 function applyI18n() {
   $$('[data-i18n]').forEach(el => {
@@ -43,6 +41,9 @@ function applyI18n() {
 }
 
 function load() {
+  // Ensure DOM elements exist before setting values
+  if (!$('proxyMode')) return;
+
   chrome.storage.local.get(null, (res) => {
     state.uiLang = res.uiLang || (navigator.language.startsWith('zh') ? 'zh' : 'en');
     state.proxyMode = res.proxyMode || 'system';
@@ -53,14 +54,14 @@ function load() {
     state.timezone = res.timezone || '';
     state.language = res.language || '';
     state.ipTimezone = res.ipTimezone || '';
-    state.selectedProfileId = state.activeProfileId || (state.profiles[0] ? state.profiles[0].id : '');
+    state.selectedProfileId = state.selectedProfileId || state.activeProfileId || (state.profiles[0] ? state.profiles[0].id : '');
 
     applyI18n();
     $('proxyMode').value = state.proxyMode;
-    $('proxyBypass').value = state.proxyBypass;
-    $('timezone').value = state.timezone;
-    $('language').value = state.language;
-    $('apiBase').value = res.apiBase || '';
+    if ($('proxyBypass')) $('proxyBypass').value = state.proxyBypass;
+    if ($('timezone')) $('timezone').value = state.timezone;
+    if ($('language')) $('language').value = state.language;
+    if ($('apiBase')) $('apiBase').value = res.apiBase || '';
     
     updateActiveGroup();
     renderSidebar();
@@ -72,11 +73,14 @@ function load() {
 
 function applyTheme(theme) {
   document.body.className = theme;
-  $('themeBtn').innerText = theme === 'light' ? '🌙' : '☀️';
+  const btn = $('themeBtn');
+  if (btn) btn.innerText = theme === 'light' ? '🌙' : '☀️';
 }
 
 function renderSidebar() {
-  const list = $('profileList'); list.innerHTML = '';
+  const list = $('profileList');
+  if (!list) return;
+  list.innerHTML = '';
   state.profiles.forEach((p) => {
     const div = document.createElement('div');
     div.className = 'profile-item' + (p.id === state.selectedProfileId ? ' active' : '');
@@ -86,14 +90,18 @@ function renderSidebar() {
       <div class="name">${escapeHtml(p.name || 'Untitled')}</div>
       ${isActive ? `<span class="meta">${state.uiLang === 'zh' ? '当前' : 'Active'}</span>` : ''}
     `;
-    div.onclick = () => { state.selectedProfileId = p.id; renderSidebar(); loadProfileForm(p.id); };
+    div.onclick = () => {
+      state.selectedProfileId = p.id;
+      renderSidebar();
+      loadProfileForm(p.id);
+    };
     list.appendChild(div);
   });
 }
 
 function loadProfileForm(id) {
   const p = state.profiles.find((x) => x.id === id);
-  if (!p) return;
+  if (!p || !$('pName')) return;
   $('pName').value = p.name || '';
   $('pScheme').value = p.scheme || 'http';
   $('pHost').value = p.host || '';
@@ -111,11 +119,14 @@ function updateActiveGroup() {
     sel.add(opt); rSel.add(opt.cloneNode(true));
   });
   sel.value = state.activeProfileId;
-  $('activeGroup').style.display = ($('proxyMode').value === 'manual' || $('proxyMode').value === 'auto') ? 'flex' : 'none';
+  const group = $('activeGroup');
+  if (group) group.style.display = ($('proxyMode').value === 'manual' || $('proxyMode').value === 'auto') ? 'flex' : 'none';
 }
 
 function renderRules() {
-  const list = $('ruleList'); list.innerHTML = '';
+  const list = $('ruleList');
+  if (!list) return;
+  list.innerHTML = '';
   state.rules.forEach((r, idx) => {
     const p = state.profiles.find((x) => x.id === r.profileId);
     const div = document.createElement('div');
@@ -124,108 +135,154 @@ function renderRules() {
       <span class="rule-pattern">${escapeHtml(r.pattern)}</span>
       <span class="rule-arrow">➜</span>
       <span class="rule-target">${escapeHtml(p ? p.name : 'Unknown')}</span>
-      <button class="rule-del" data-idx="${idx}">×</button>
+      <button class="rule-del">×</button>
     `;
-    div.querySelector('.rule-del').onclick = () => { state.rules.splice(idx, 1); renderRules(); };
+    div.querySelector('.rule-del').onclick = () => {
+      state.rules.splice(idx, 1);
+      renderRules();
+    };
     list.appendChild(div);
   });
 }
 
 function bind() {
-  $$('.nav-menu-item').forEach(btn => {
+  const menuItems = $$('.nav-menu-item');
+  if (menuItems.length === 0) return;
+
+  menuItems.forEach(btn => {
     btn.onclick = () => {
       const sid = btn.dataset.section;
-      $$('.nav-menu-item').forEach(b => b.classList.remove('active'));
-      $$('.config-section').forEach(s => s.classList.remove('active'));
-      btn.classList.add('active'); $(sid).classList.add('active');
+      const section = $(sid);
+      if (section) {
+        $$('.nav-menu-item').forEach(b => b.classList.remove('active'));
+        $$('.config-section').forEach(s => s.classList.remove('active'));
+        btn.classList.add('active');
+        section.classList.add('active');
+      }
     };
   });
 
-  $('proxyMode').onchange = () => {
-    state.proxyMode = $('proxyMode').value;
-    updateActiveGroup();
-  };
-
-  $('newProfileBtn').onclick = () => {
-    const id = 'p' + Date.now();
-    state.profiles.push({ id, name: 'New Node', scheme: 'http', host: '', port: '', user: '', pass: '' });
-    state.selectedProfileId = id; renderSidebar(); loadProfileForm(id); updateActiveGroup();
-  };
-
-  $('updateProfileBtn').onclick = () => {
-    const p = state.profiles.find(x => x.id === state.selectedProfileId);
-    if (!p) return;
-    p.name = $('pName').value; p.scheme = $('pScheme').value; p.host = $('pHost').value;
-    p.port = $('pPort').value; p.user = $('pUser').value; p.pass = $('pPass').value;
-    renderSidebar(); updateActiveGroup();
-    alert('Node Updated');
-  };
-
-  $('delProfileBtn').onclick = () => {
-    if (state.profiles.length <= 1) return;
-    state.profiles = state.profiles.filter(x => x.id !== state.selectedProfileId);
-    state.selectedProfileId = state.profiles[0].id;
-    renderSidebar(); loadProfileForm(state.selectedProfileId); updateActiveGroup();
-  };
-
-  $('addRuleBtn').onclick = () => {
-    const pattern = $('rulePattern').value.trim();
-    if (!pattern) return;
-    state.rules.push({ pattern, profileId: $('ruleProfile').value, type: 'wildcard' });
-    $('rulePattern').value = ''; renderRules();
-  };
-
-  $('saveTopBtn').onclick = () => {
-    const data = {
-      proxyMode: $('proxyMode').value,
-      activeProfileId: $('activeProfile').value,
-      proxyProfiles: state.profiles,
-      rules: state.rules,
-      proxyBypass: $('proxyBypass').value,
-      timezone: $('timezone').value,
-      language: $('language').value,
-      apiBase: $('apiBase').value
+  if ($('proxyMode')) {
+    $('proxyMode').onchange = () => {
+      updateActiveGroup();
     };
-    chrome.storage.local.set(data, () => alert('Settings Saved!'));
-  };
+  }
 
-  $('themeBtn').onclick = () => {
-    chrome.storage.local.get(['theme'], res => {
-      const next = res.theme === 'light' ? 'dark' : 'light';
-      chrome.storage.local.set({ theme: next });
-    });
-  };
-
-  $('uiLangToggle').onclick = () => {
-    state.uiLang = state.uiLang === 'zh' ? 'en' : 'zh';
-    chrome.storage.local.set({ uiLang: state.uiLang });
-  };
-
-  $('testNodeBtn').onclick = async () => {
-    const btn = $('testNodeBtn'); btn.innerText = 'Testing...';
-    try {
-      const start = Date.now();
-      await fetch('https://1.1.1.1/cdn-cgi/trace', { mode: 'no-cors', cache: 'no-store' });
-      alert('Connected! Latency: ' + (Date.now() - start) + 'ms');
-    } catch(e) { alert('Connection Failed'); }
-    btn.innerText = '⚡ Test Connection';
-  };
-
-  $('exportBtn').onclick = () => {
-    chrome.storage.local.get(null, res => {
-      const blob = new Blob([JSON.stringify(res, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `atlas_config.json`; a.click();
-    });
-  };
-
-  $('importBtn').onclick = () => $('importFile').click();
-  $('importFile').onchange = (e) => {
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      chrome.storage.local.set(JSON.parse(ev.target.result), () => location.reload());
+  if ($('newProfileBtn')) {
+    $('newProfileBtn').onclick = () => {
+      const id = 'p' + Date.now();
+      state.profiles.push({ id, name: 'New Node', scheme: 'http', host: '', port: '', user: '', pass: '' });
+      state.selectedProfileId = id;
+      renderSidebar();
+      loadProfileForm(id);
+      updateActiveGroup();
     };
-    reader.readAsText(e.target.files[0]);
-  };
+  }
+
+  if ($('updateProfileBtn')) {
+    $('updateProfileBtn').onclick = () => {
+      const p = state.profiles.find(x => x.id === state.selectedProfileId);
+      if (!p) return;
+      p.name = $('pName').value;
+      p.scheme = $('pScheme').value;
+      p.host = $('pHost').value;
+      p.port = $('pPort').value;
+      p.user = $('pUser').value;
+      p.pass = $('pPass').value;
+      renderSidebar();
+      updateActiveGroup();
+      alert('Node Updated');
+    };
+  }
+
+  if ($('delProfileBtn')) {
+    $('delProfileBtn').onclick = () => {
+      if (state.profiles.length <= 1) return;
+      state.profiles = state.profiles.filter(x => x.id !== state.selectedProfileId);
+      state.selectedProfileId = state.profiles[0].id;
+      renderSidebar();
+      loadProfileForm(state.selectedProfileId);
+      updateActiveGroup();
+    };
+  }
+
+  if ($('addRuleBtn')) {
+    $('addRuleBtn').onclick = () => {
+      const pattern = $('rulePattern').value.trim();
+      if (!pattern) return;
+      state.rules.push({ pattern, profileId: $('ruleProfile').value, type: 'wildcard' });
+      $('rulePattern').value = '';
+      renderRules();
+    };
+  }
+
+  if ($('saveTopBtn')) {
+    $('saveTopBtn').onclick = () => {
+      const data = {
+        proxyMode: $('proxyMode').value,
+        activeProfileId: $('activeProfile').value,
+        proxyProfiles: state.profiles,
+        rules: state.rules,
+        proxyBypass: $('proxyBypass').value,
+        timezone: $('timezone').value,
+        language: $('language').value,
+        apiBase: $('apiBase').value
+      };
+      chrome.storage.local.set(data, () => alert('Settings Saved!'));
+    };
+  }
+
+  if ($('themeBtn')) {
+    $('themeBtn').onclick = () => {
+      chrome.storage.local.get(['theme'], res => {
+        const next = res.theme === 'light' ? 'dark' : 'light';
+        chrome.storage.local.set({ theme: next });
+      });
+    };
+  }
+
+  if ($('uiLangToggle')) {
+    $('uiLangToggle').onclick = () => {
+      state.uiLang = state.uiLang === 'zh' ? 'en' : 'zh';
+      chrome.storage.local.set({ uiLang: state.uiLang });
+    };
+  }
+
+  if ($('testNodeBtn')) {
+    $('testNodeBtn').onclick = async () => {
+      const btn = $('testNodeBtn');
+      btn.innerText = 'Testing...';
+      try {
+        const start = Date.now();
+        await fetch('https://1.1.1.1/cdn-cgi/trace', { mode: 'no-cors', cache: 'no-store' });
+        alert('Connected! Latency: ' + (Date.now() - start) + 'ms');
+      } catch(e) { alert('Connection Failed'); }
+      btn.innerText = '⚡ Test Connection';
+    };
+  }
+
+  if ($('exportBtn')) {
+    $('exportBtn').onclick = () => {
+      chrome.storage.local.get(null, res => {
+        const blob = new Blob([JSON.stringify(res, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `atlas_config.json`;
+        a.click();
+      });
+    };
+  }
+
+  if ($('importBtn')) {
+    $('importBtn').onclick = () => $('importFile').click();
+    $('importFile').onchange = (e) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        chrome.storage.local.set(JSON.parse(ev.target.result), () => location.reload());
+      };
+      reader.readAsText(e.target.files[0]);
+    };
+  }
 }
 
 function escapeHtml(str) {

@@ -96,6 +96,7 @@ body {
 .score-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; align-items: baseline; }
 .score-text span { font-size: 32px; font-weight: 900; color: var(--text-main); letter-spacing: -1px; }
 .score-text small { font-size: 12px; color: var(--text-muted); margin-left: 2px; font-weight: 600; }
+.score-label { font-size: 12px; font-weight: 700; color: var(--text-muted); margin-top: -8px; margin-bottom: 8px; }
 
 .data-row { display: flex; justify-content: space-between; font-size: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .data-row:last-child { border-bottom: none; padding-bottom: 0; }

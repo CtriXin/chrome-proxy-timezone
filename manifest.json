@@ -11,7 +11,7 @@
     "scripting",
     "tabs",
     "webRequest",
-    "webRequestBlocking",
+    "webRequestAuthProvider",
     "privacy"
   ],
   "host_permissions": [
