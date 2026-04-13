@@ -1,4 +1,4 @@
-const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById(id) || document.querySelector(id);
 const $$ = (s) => document.querySelectorAll(s);
 
 const TRANSLATIONS = {
@@ -27,7 +27,9 @@ let state = {
   rules: [], proxyBypass: '', timezone: '', language: '', ipTimezone: '', uiLang: 'zh'
 };
 
-function i18n(key) { return TRANSLATIONS[state.uiLang][key] || key; }
+function i18n(key) {
+  return TRANSLATIONS[state.uiLang][key] || key;
+}
 
 function applyI18n() {
   $$('[data-i18n]').forEach(el => {
@@ -41,9 +43,6 @@ function applyI18n() {
 }
 
 function load() {
-  // Ensure DOM elements exist before setting values
-  if (!$('proxyMode')) return;
-
   chrome.storage.local.get(null, (res) => {
     state.uiLang = res.uiLang || (navigator.language.startsWith('zh') ? 'zh' : 'en');
     state.proxyMode = res.proxyMode || 'system';
@@ -54,14 +53,14 @@ function load() {
     state.timezone = res.timezone || '';
     state.language = res.language || '';
     state.ipTimezone = res.ipTimezone || '';
-    state.selectedProfileId = state.selectedProfileId || state.activeProfileId || (state.profiles[0] ? state.profiles[0].id : '');
+    state.selectedProfileId = state.activeProfileId || (state.profiles[0] ? state.profiles[0].id : '');
 
     applyI18n();
     $('proxyMode').value = state.proxyMode;
-    if ($('proxyBypass')) $('proxyBypass').value = state.proxyBypass;
-    if ($('timezone')) $('timezone').value = state.timezone;
-    if ($('language')) $('language').value = state.language;
-    if ($('apiBase')) $('apiBase').value = res.apiBase || '';
+    $('proxyBypass').value = state.proxyBypass;
+    $('timezone').value = state.timezone;
+    $('language').value = state.language;
+    $('apiBase').value = res.apiBase || '';
     
     updateActiveGroup();
     renderSidebar();
@@ -73,14 +72,11 @@ function load() {
 
 function applyTheme(theme) {
   document.body.className = theme;
-  const btn = $('themeBtn');
-  if (btn) btn.innerText = theme === 'light' ? '🌙' : '☀️';
+  $('themeBtn').innerText = theme === 'light' ? '🌙' : '☀️';
 }
 
 function renderSidebar() {
-  const list = $('profileList');
-  if (!list) return;
-  list.innerHTML = '';
+  const list = $('profileList'); list.innerHTML = '';
   state.profiles.forEach((p) => {
     const div = document.createElement('div');
     div.className = 'profile-item' + (p.id === state.selectedProfileId ? ' active' : '');
@@ -90,18 +86,14 @@ function renderSidebar() {
       <div class="name">${escapeHtml(p.name || 'Untitled')}</div>
       ${isActive ? `<span class="meta">${state.uiLang === 'zh' ? '当前' : 'Active'}</span>` : ''}
     `;
-    div.onclick = () => {
-      state.selectedProfileId = p.id;
-      renderSidebar();
-      loadProfileForm(p.id);
-    };
+    div.onclick = () => { state.selectedProfileId = p.id; renderSidebar(); loadProfileForm(p.id); };
     list.appendChild(div);
   });
 }
 
 function loadProfileForm(id) {
   const p = state.profiles.find((x) => x.id === id);
-  if (!p || !$('pName')) return;
+  if (!p) return;
   $('pName').value = p.name || '';
   $('pScheme').value = p.scheme || 'http';
   $('pHost').value = p.host || '';
@@ -119,14 +111,11 @@ function updateActiveGroup() {
     sel.add(opt); rSel.add(opt.cloneNode(true));
   });
   sel.value = state.activeProfileId;
-  const group = $('activeGroup');
-  if (group) group.style.display = ($('proxyMode').value === 'manual' || $('proxyMode').value === 'auto') ? 'flex' : 'none';
+  $('activeGroup').style.display = ($('proxyMode').value === 'manual' || $('proxyMode').value === 'auto') ? 'flex' : 'none';
 }
 
 function renderRules() {
-  const list = $('ruleList');
-  if (!list) return;
-  list.innerHTML = '';
+  const list = $('ruleList'); list.innerHTML = '';
   state.rules.forEach((r, idx) => {
     const p = state.profiles.find((x) => x.id === r.profileId);
     const div = document.createElement('div');
@@ -135,154 +124,108 @@ function renderRules() {
       <span class="rule-pattern">${escapeHtml(r.pattern)}</span>
       <span class="rule-arrow">➜</span>
       <span class="rule-target">${escapeHtml(p ? p.name : 'Unknown')}</span>
-      <button class="rule-del">×</button>
+      <button class="rule-del" data-idx="${idx}">×</button>
     `;
-    div.querySelector('.rule-del').onclick = () => {
-      state.rules.splice(idx, 1);
-      renderRules();
-    };
+    div.querySelector('.rule-del').onclick = () => { state.rules.splice(idx, 1); renderRules(); };
     list.appendChild(div);
   });
 }
 
 function bind() {
-  const menuItems = $$('.nav-menu-item');
-  if (menuItems.length === 0) return;
-
-  menuItems.forEach(btn => {
+  $$('.nav-menu-item').forEach(btn => {
     btn.onclick = () => {
       const sid = btn.dataset.section;
-      const section = $(sid);
-      if (section) {
-        $$('.nav-menu-item').forEach(b => b.classList.remove('active'));
-        $$('.config-section').forEach(s => s.classList.remove('active'));
-        btn.classList.add('active');
-        section.classList.add('active');
-      }
+      $$('.nav-menu-item').forEach(b => b.classList.remove('active'));
+      $$('.config-section').forEach(s => s.classList.remove('active'));
+      btn.classList.add('active'); $(sid).classList.add('active');
     };
   });
 
-  if ($('proxyMode')) {
-    $('proxyMode').onchange = () => {
-      updateActiveGroup();
-    };
-  }
+  $('proxyMode').onchange = () => {
+    state.proxyMode = $('proxyMode').value;
+    updateActiveGroup();
+  };
 
-  if ($('newProfileBtn')) {
-    $('newProfileBtn').onclick = () => {
-      const id = 'p' + Date.now();
-      state.profiles.push({ id, name: 'New Node', scheme: 'http', host: '', port: '', user: '', pass: '' });
-      state.selectedProfileId = id;
-      renderSidebar();
-      loadProfileForm(id);
-      updateActiveGroup();
-    };
-  }
+  $('newProfileBtn').onclick = () => {
+    const id = 'p' + Date.now();
+    state.profiles.push({ id, name: 'New Node', scheme: 'http', host: '', port: '', user: '', pass: '' });
+    state.selectedProfileId = id; renderSidebar(); loadProfileForm(id); updateActiveGroup();
+  };
 
-  if ($('updateProfileBtn')) {
-    $('updateProfileBtn').onclick = () => {
-      const p = state.profiles.find(x => x.id === state.selectedProfileId);
-      if (!p) return;
-      p.name = $('pName').value;
-      p.scheme = $('pScheme').value;
-      p.host = $('pHost').value;
-      p.port = $('pPort').value;
-      p.user = $('pUser').value;
-      p.pass = $('pPass').value;
-      renderSidebar();
-      updateActiveGroup();
-      alert('Node Updated');
-    };
-  }
+  $('updateProfileBtn').onclick = () => {
+    const p = state.profiles.find(x => x.id === state.selectedProfileId);
+    if (!p) return;
+    p.name = $('pName').value; p.scheme = $('pScheme').value; p.host = $('pHost').value;
+    p.port = $('pPort').value; p.user = $('pUser').value; p.pass = $('pPass').value;
+    renderSidebar(); updateActiveGroup();
+    alert('Node Updated');
+  };
 
-  if ($('delProfileBtn')) {
-    $('delProfileBtn').onclick = () => {
-      if (state.profiles.length <= 1) return;
-      state.profiles = state.profiles.filter(x => x.id !== state.selectedProfileId);
-      state.selectedProfileId = state.profiles[0].id;
-      renderSidebar();
-      loadProfileForm(state.selectedProfileId);
-      updateActiveGroup();
-    };
-  }
+  $('delProfileBtn').onclick = () => {
+    if (state.profiles.length <= 1) return;
+    state.profiles = state.profiles.filter(x => x.id !== state.selectedProfileId);
+    state.selectedProfileId = state.profiles[0].id;
+    renderSidebar(); loadProfileForm(state.selectedProfileId); updateActiveGroup();
+  };
 
-  if ($('addRuleBtn')) {
-    $('addRuleBtn').onclick = () => {
-      const pattern = $('rulePattern').value.trim();
-      if (!pattern) return;
-      state.rules.push({ pattern, profileId: $('ruleProfile').value, type: 'wildcard' });
-      $('rulePattern').value = '';
-      renderRules();
-    };
-  }
+  $('addRuleBtn').onclick = () => {
+    const pattern = $('rulePattern').value.trim();
+    if (!pattern) return;
+    state.rules.push({ pattern, profileId: $('ruleProfile').value, type: 'wildcard' });
+    $('rulePattern').value = ''; renderRules();
+  };
 
-  if ($('saveTopBtn')) {
-    $('saveTopBtn').onclick = () => {
-      const data = {
-        proxyMode: $('proxyMode').value,
-        activeProfileId: $('activeProfile').value,
-        proxyProfiles: state.profiles,
-        rules: state.rules,
-        proxyBypass: $('proxyBypass').value,
-        timezone: $('timezone').value,
-        language: $('language').value,
-        apiBase: $('apiBase').value
-      };
-      chrome.storage.local.set(data, () => alert('Settings Saved!'));
+  $('saveTopBtn').onclick = () => {
+    const data = {
+      proxyMode: $('proxyMode').value,
+      activeProfileId: $('activeProfile').value,
+      proxyProfiles: state.profiles,
+      rules: state.rules,
+      proxyBypass: $('proxyBypass').value,
+      timezone: $('timezone').value,
+      language: $('language').value,
+      apiBase: $('apiBase').value
     };
-  }
+    chrome.storage.local.set(data, () => alert('Settings Saved!'));
+  };
 
-  if ($('themeBtn')) {
-    $('themeBtn').onclick = () => {
-      chrome.storage.local.get(['theme'], res => {
-        const next = res.theme === 'light' ? 'dark' : 'light';
-        chrome.storage.local.set({ theme: next });
-      });
-    };
-  }
+  $('themeBtn').onclick = () => {
+    chrome.storage.local.get(['theme'], res => {
+      const next = res.theme === 'light' ? 'dark' : 'light';
+      chrome.storage.local.set({ theme: next });
+    });
+  };
 
-  if ($('uiLangToggle')) {
-    $('uiLangToggle').onclick = () => {
-      state.uiLang = state.uiLang === 'zh' ? 'en' : 'zh';
-      chrome.storage.local.set({ uiLang: state.uiLang });
-    };
-  }
+  $('uiLangToggle').onclick = () => {
+    state.uiLang = state.uiLang === 'zh' ? 'en' : 'zh';
+    chrome.storage.local.set({ uiLang: state.uiLang });
+  };
 
-  if ($('testNodeBtn')) {
-    $('testNodeBtn').onclick = async () => {
-      const btn = $('testNodeBtn');
-      btn.innerText = 'Testing...';
-      try {
-        const start = Date.now();
-        await fetch('https://1.1.1.1/cdn-cgi/trace', { mode: 'no-cors', cache: 'no-store' });
-        alert('Connected! Latency: ' + (Date.now() - start) + 'ms');
-      } catch(e) { alert('Connection Failed'); }
-      btn.innerText = '⚡ Test Connection';
-    };
-  }
+  $('testNodeBtn').onclick = async () => {
+    const btn = $('testNodeBtn'); btn.innerText = 'Testing...';
+    try {
+      const start = Date.now();
+      await fetch('https://1.1.1.1/cdn-cgi/trace', { mode: 'no-cors', cache: 'no-store' });
+      alert('Connected! Latency: ' + (Date.now() - start) + 'ms');
+    } catch(e) { alert('Connection Failed'); }
+    btn.innerText = '⚡ Test Connection';
+  };
 
-  if ($('exportBtn')) {
-    $('exportBtn').onclick = () => {
-      chrome.storage.local.get(null, res => {
-        const blob = new Blob([JSON.stringify(res, null, 2)], { type: 'application/json' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `atlas_config.json`;
-        a.click();
-      });
-    };
-  }
+  $('exportBtn').onclick = () => {
+    chrome.storage.local.get(null, res => {
+      const blob = new Blob([JSON.stringify(res, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `atlas_config.json`; a.click();
+    });
+  };
 
-  if ($('importBtn')) {
-    $('importBtn').onclick = () => $('importFile').click();
-    $('importFile').onchange = (e) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        chrome.storage.local.set(JSON.parse(ev.target.result), () => location.reload());
-      };
-      reader.readAsText(e.target.files[0]);
+  $('importBtn').onclick = () => $('importFile').click();
+  $('importFile').onchange = (e) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      chrome.storage.local.set(JSON.parse(ev.target.result), () => location.reload());
     };
-  }
+    reader.readAsText(e.target.files[0]);
+  };
 }
 
 function escapeHtml(str) {
@@ -291,7 +234,15 @@ function escapeHtml(str) {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes.theme || changes.uiLang) load();
+  if ('theme' in changes || 'uiLang' in changes) load();
+  if ('proxyMode' in changes || 'activeProfileId' in changes || 'proxyProfiles' in changes) {
+    state.proxyMode = changes.proxyMode?.newValue || state.proxyMode;
+    state.activeProfileId = changes.activeProfileId?.newValue || state.activeProfileId;
+    state.profiles = changes.proxyProfiles?.newValue || state.profiles;
+    if ($('proxyMode')) $('proxyMode').value = state.proxyMode;
+    updateActiveGroup();
+    renderSidebar();
+  }
 });
 
 document.addEventListener('DOMContentLoaded', () => { load(); bind(); });

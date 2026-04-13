@@ -8,34 +8,35 @@ function refreshConfig() {
 }
 refreshConfig();
 
-// In Manifest V3, blocking proxy authentication requires the webRequestAuthProvider permission 
-// and the listener MUST use the asyncCallback pattern.
-chrome.webRequest.onAuthRequired.addListener(
-  (details, asyncCallback) => {
-    if (!details.isProxy) return asyncCallback({});
-    const key = `${details.proxyServer.host}:${details.proxyServer.port}`;
-    const auth = authCache.get(key);
-    if (auth) {
-      asyncCallback({ authCredentials: { username: auth.user, password: auth.pass } });
-    } else {
-      asyncCallback({});
-    }
-  },
-  { urls: ['<all_urls>'] },
-  ['asyncBlocking']
-);
+// Service worker 唤醒后恢复状态
+function restoreState() {
+  refreshConfig();
+  if (chrome.privacy && chrome.privacy.network) {
+    chrome.privacy.network.webRTCIPHandlingPolicy.get({}, (res) => {
+      if (res.value !== 'disable_non_proxied_udp') {
+        chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: 'disable_non_proxied_udp' });
+      }
+    });
+  }
+  applyProxy();
+  updateIcon();
+}
+
+// 首次加载时恢复代理状态
+restoreState();
+
+// 顶层注册监听
+chrome.webRequest.onAuthRequired.addListener(handleAuth, { urls: ['<all_urls>'] }, ['asyncBlocking']);
 
 chrome.runtime.onInstalled.addListener(() => {
+  // 安全调用 privacy API
   if (chrome.privacy && chrome.privacy.network) {
     chrome.privacy.network.webRTCIPHandlingPolicy.set({ value: 'disable_non_proxied_udp' });
   }
   
-  chrome.storage.local.get(['proxyMode', 'proxyProfiles', 'apiBase', 'theme', 'uiLang'], (res) => {
+  chrome.storage.local.get(['proxyMode', 'proxyProfiles', 'apiBase'], (res) => {
     const defaults = {};
     if (!res.apiBase) defaults.apiBase = 'https://proxy-api.evilsngx.workers.dev';
-    if (!res.proxyMode) defaults.proxyMode = 'system';
-    if (!res.theme) defaults.theme = 'dark';
-    if (!res.uiLang) defaults.uiLang = navigator.language.startsWith('zh') ? 'zh' : 'en';
     if (res.proxyProfiles === undefined) {
       defaults.proxyProfiles = [{ id: 'p1', name: 'Default', scheme: 'http', host: '', port: '', user: '', pass: '' }];
       defaults.activeProfileId = 'p1';
@@ -77,12 +78,13 @@ function applyProxy() {
 
     const bypassList = (res.proxyBypass || '').split(',').map(s => s.trim()).filter(Boolean);
     const server = `${active.host}:${active.port}`;
+    const scheme = active.scheme || 'http';
     
     let pac = '';
     if (mode === 'manual') {
       pac = `function FindProxyForURL(url, host) {
         ${bypassList.map(h => `if (shExpMatch(host, "${h}")) return "DIRECT";`).join('\n')}
-        return "${active.scheme.toUpperCase()} ${server}; DIRECT";
+        return "${scheme.toUpperCase()} ${server}; DIRECT";
       }`;
     } else {
       const ruleChecks = (res.rules || []).map(r => {
@@ -97,6 +99,13 @@ function applyProxy() {
     }
     chrome.proxy.settings.set({ value: { mode: 'pac_script', pacScript: { data: pac } }, scope: 'regular' });
   });
+}
+
+function handleAuth(details) {
+  if (!details.isProxy) return {};
+  const key = `${details.proxyServer.host}:${details.proxyServer.port}`;
+  const auth = authCache.get(key);
+  return auth ? { authCredentials: { username: auth.user, password: auth.pass } } : {};
 }
 
 function updateAuthCache(res) {
